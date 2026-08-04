@@ -307,6 +307,8 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
       <div class="warnbox">The token below is like a key to that one repository. Keep it on your own devices only — it is never put in a setup link, and never type it anywhere other than this box.</div>
       <div class="fieldrow"><label for="ghToken">Token</label><input class="inp" id="ghToken" type="password" placeholder="github_pat_…" autocapitalize="off" autocorrect="off"></div>
       <button class="btn dark" id="publish">Publish to Rowen's devices</button>
+      <button class="btn" id="testConn">Test the GitHub connection</button>
+      <div class="status" id="testStatus"></div>
       <button class="btn" id="pullNow">Check for updates now</button>
     </div>
 
@@ -889,12 +891,41 @@ async function publish(){
     const body={message:"Update timetable", content:btoa(JSON.stringify(pkg)), branch};
     if(sha) body.sha=sha;
     const p=await fetch(api,{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},hd),body:JSON.stringify(body)});
-    if(!p.ok){ const j=await p.json().catch(()=>({})); throw new Error(j.message||p.status); }
+    if(!p.ok){ const j=await p.json().catch(()=>({})); throw new Error(p.status+" "+(j.message||"")); }
     S.last=pkg.updated; saveSync();
     setStatus("Published "+new Date(S.last).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}));
     toast("Published — her devices will pick it up");
   }catch(e){ toast("Didn't publish: "+e.message); }
 }
+
+async function testConn(){
+  const out=$("testStatus");
+  const say=t=>{ out.innerHTML=t; };
+  if(!S.owner||!S.repo){ return say("Fill in the user and repository first"); }
+  say("Testing…");
+  const lines=["Calling: <b>"+S.owner+" / "+S.repo+"</b>, file <b>"+(S.path||"data.json")+"</b>, branch <b>"+(S.branch||"main")+"</b>"];
+  try{
+    const anon=await fetch(`https://api.github.com/repos/${S.owner}/${S.repo}`);
+    lines.push(anon.ok ? "Repo exists — names are right"
+                       : "Repo not found — check the username and the capital letters in the name");
+    if(!S.token){ lines.push("No token entered yet"); return say(lines.join("<br>")); }
+    const hd={Authorization:"Bearer "+S.token, Accept:"application/vnd.github+json"};
+    const auth=await fetch(`https://api.github.com/repos/${S.owner}/${S.repo}`,{headers:hd});
+    if(auth.status===401) lines.push("Token rejected — it is wrong, expired, or revoked");
+    else if(auth.status===404) lines.push("Token cannot see this repo — check Resource owner and that rowen-S1 is in its repository list");
+    else if(auth.ok) lines.push("Token can see the repo");
+    else lines.push("Token check returned "+auth.status);
+    if(auth.ok){
+      const f=await fetch(`https://api.github.com/repos/${S.owner}/${S.repo}/contents/${S.path||"data.json"}?ref=${S.branch||"main"}`,{headers:hd});
+      if(f.ok) lines.push("Found "+(S.path||"data.json")+" — ready to publish");
+      else if(f.status===404) lines.push("No file called "+(S.path||"data.json")+" on branch "+(S.branch||"main")+" — it will be created on first publish");
+      else if(f.status===403) lines.push("Token lacks Contents: Read and write");
+      else lines.push("File check returned "+f.status);
+    }
+  }catch(e){ lines.push("Network problem: "+e.message); }
+  say(lines.join("<br>"));
+}
+$("testConn").addEventListener("click",testConn);
 
 function makeLink(role){
   return location.origin+location.pathname+"#s="+
