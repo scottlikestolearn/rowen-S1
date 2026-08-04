@@ -198,6 +198,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
 .toast{
   position:fixed;left:50%;bottom:78px;transform:translateX(-50%);
   background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;font-weight:650;
+  max-width:82%;text-align:center;
   opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;
 }
 .toast.on{opacity:1}
@@ -227,12 +228,12 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
       </div>
       <div class="spine" id="spine"></div>
     </div>
-    <div class="scrub">
+    <div class="scrub" id="scrub">
       <div class="hd"><span>Preview another time — testing only</span><button id="live">Back to now</button></div>
       <div class="row">
         <select id="sday">
           <option value="1">Mon</option><option value="2">Tue</option><option value="3">Wed</option>
-          <option value="4">Thu</option><option value="5">Fri</option><option value="6">Sat</option>
+          <option value="4">Thu</option><option value="5">Fri</option>
         </select>
         <input type="range" id="smin" min="450" max="1010" step="1">
         <span class="t" id="stime"></span>
@@ -576,7 +577,8 @@ function tick(){
   if(manual){ day=manual.day; now=manual.now; }
   else { const d=new Date(); day=dow(d); now=d.getHours()*60+d.getMinutes(); }
   paintNow(day, now);
-  $("sday").value = day>5?6:day; $("smin").value=now; $("stime").textContent=nice(now);
+  $("sday").value = DAYTYPE[day] ? day : 1;
+  $("smin").value=now; $("stime").textContent=nice(now);
 }
 function setManual(){ manual={day:+$("sday").value, now:+$("smin").value}; tick(); }
 $("sday").addEventListener("input",setManual);
@@ -859,20 +861,29 @@ function guessUrl(){
   try{ return new URL(S.path||"data.json", location.href).href; }catch(e){ return ""; }
 }
 
+const when = iso => { try{ return new Date(iso).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}); }catch(e){ return "?"; } };
+
 async function pull(quiet){
-  if(!CRY){ setStatus("Needs to be opened over https"); return; }
-  if(!S.url||!S.key){ setStatus("Not set up yet"); return; }
+  const report=(long,short)=>{
+    setStatus(long);
+    const b=$("testStatus"); if(b) b.textContent=long;
+    if(!quiet) toast(short||long);
+  };
+  if(!CRY){ report("Open the app over https to sync","Needs https"); return; }
+  if(!S.url||!S.key){ report("Sync isn't set up yet — set the address and generate a key","Not set up yet"); return; }
   try{
     const r=await fetch(S.url+(S.url.indexOf("?")>-1?"&":"?")+"t="+Date.now(), {cache:"no-store"});
-    if(!r.ok) throw new Error("not found");
+    if(!r.ok) throw new Error("HTTP "+r.status);
     const pkg=await r.json();
-    if(S.last && pkg.updated && pkg.updated<=S.last){ setStatus("Up to date"); return; }
+    if(!pkg.ct) throw new Error("nothing published yet");
+    if(S.last && pkg.updated && pkg.updated<=S.last){
+      report("Already up to date — last change "+when(S.last),"Already up to date"); return;
+    }
     D=await unseal(pkg,S.key); save();
     S.last=pkg.updated||new Date().toISOString(); saveSync();
     refreshAll();
-    if(!quiet) toast("Timetable updated");
-    setStatus("Updated "+new Date(S.last).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}));
-  }catch(e){ setStatus("Couldn't check just now — using the saved copy"); }
+    report("Timetable updated — "+when(S.last),"Timetable updated");
+  }catch(e){ report("Couldn't check ("+e.message+") — using the saved copy","Couldn't check"); }
 }
 
 async function publish(){
@@ -966,6 +977,8 @@ function applyRole(){
   const child = S.role==="child";
   const btn=document.querySelector('nav button[data-v="setup"]');
   if(btn) btn.hidden=child;
+  const sc=$("scrub"); if(sc) sc.hidden=child;
+  if(child){ manual=null; }
   if(child && $("v-setup").classList.contains("on")){
     document.querySelector('nav button[data-v="now"]').click();
   }
