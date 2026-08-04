@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="School">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>School</title>
+<style>
+:root{
+  --paper:#F7F7F4; --card:#FFFFFF;
+  --ink:#16181D; --ink-soft:#5C6169; --ink-faint:#A3A8B0;
+  --rule:#E2E2DC; --rule-soft:#EDEDE8;
+  --accent:#46536B;
+  --r:16px;
+  --f-ui:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --f-num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-ui);
+  -webkit-font-smoothing:antialiased;display:flex;flex-direction:column;
+  padding:env(safe-area-inset-top) 0 0;
+}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- shell ---------- */
+.top{display:flex;align-items:baseline;justify-content:space-between;padding:16px 18px 10px}
+.eyebrow{font-size:11px;font-weight:750;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+.clock{font-family:var(--f-num);font-size:13px;color:var(--ink-faint)}
+
+.views{flex:1;min-height:0;overflow:hidden;display:flex}
+.view{flex:1;min-width:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:0 18px 22px;display:none}
+.view.on{display:block}
+.view.flexcol{display:none}
+.view.flexcol.on{display:flex;flex-direction:column;overflow:hidden;padding-bottom:8px}
+
+nav{
+  display:flex;border-top:1px solid var(--rule);background:var(--card);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav button{
+  flex:1;background:none;border:none;padding:11px 4px 13px;
+  font-size:10px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink-faint);border-top:2px solid transparent;margin-top:-1px;
+}
+nav button.on{color:var(--ink);border-top-color:var(--accent)}
+
+/* ---------- NOW ---------- */
+.nowwrap{flex:1;display:flex;gap:12px;min-height:0}
+.card{
+  flex:1;min-width:0;border-radius:var(--r);background:var(--card);border:1px solid var(--rule);
+  padding:24px 20px;display:flex;flex-direction:column;position:relative;overflow:hidden;
+}
+.card::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--accent)}
+.kicker{font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
+.subject{font-size:clamp(36px,9.5vw,58px);font-weight:800;letter-spacing:-.035em;line-height:.94;margin:14px 0 0}
+.roomline{margin-top:16px;display:flex;align-items:baseline;gap:9px}
+.roomline .lbl{font-size:11px;font-weight:750;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
+.roomline .val{font-size:clamp(21px,5.2vw,28px);font-weight:700;letter-spacing:-.02em}
+.left{margin-top:18px}
+.left .num{font-family:var(--f-num);font-size:14px;color:var(--ink-soft)}
+.bar{margin-top:7px;height:7px;border-radius:4px;background:var(--rule);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px;transition:width .6s linear}
+.meta{margin-top:auto;padding-top:20px;font-size:15px;line-height:1.45;color:var(--ink-soft)}
+.meta b{color:var(--ink);font-weight:650}
+
+.spine{width:44px;flex:none;display:flex;flex-direction:column;gap:3px;padding:2px 0;position:relative}
+.blk{border-radius:5px;background:#E6E6E0;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.blk.brk{background:transparent;border:1px dashed var(--rule)}
+.blk em{font-style:normal;font-size:9px;font-weight:800;color:#fff;opacity:.92}
+.blk.brk em{color:var(--ink-faint)}
+.blk.past{opacity:.26}
+.blk.cur{outline:2px solid var(--ink);outline-offset:1px}
+.nowline{position:absolute;left:-5px;right:-5px;height:2px;background:var(--ink);border-radius:2px}
+.nowline::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--ink)}
+
+.scrub{border-top:1px solid var(--rule);margin-top:10px;padding:9px 0 4px}
+.scrub .hd{display:flex;justify-content:space-between;align-items:center;font-size:10px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint)}
+.scrub .hd button{background:none;border:none;color:var(--accent);font-size:10px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;padding:0}
+.scrub .row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.scrub select{font-size:13px;padding:5px 7px;border-radius:9px;border:1px solid var(--rule);background:var(--card)}
+.scrub input[type=range]{flex:1;accent-color:var(--accent)}
+.scrub .t{font-family:var(--f-num);font-size:13px;color:var(--ink-soft);min-width:52px;text-align:right}
+
+/* ---------- BAG ---------- */
+.baghd{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:4px 0 16px}
+.bagfor{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.05}
+.bagfor small{display:block;font-size:11px;font-weight:750;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:5px}
+.pill{
+  border:1px solid var(--rule);background:var(--card);border-radius:999px;
+  padding:7px 13px;font-size:12px;font-weight:650;color:var(--ink-soft);white-space:nowrap;
+}
+.pill.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.classes{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.chip{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px 5px 7px;background:var(--card);border:1px solid var(--rule);font-size:12px;font-weight:650}
+.chip i{width:9px;height:9px;border-radius:50%;flex:none}
+
+.prog{height:6px;border-radius:4px;background:var(--rule);overflow:hidden;margin-bottom:4px}
+.prog i{display:block;height:100%;background:var(--ink);border-radius:4px;transition:width .3s}
+.progtxt{font-family:var(--f-num);font-size:12px;color:var(--ink-faint);margin-bottom:16px}
+
+ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+ul.items li{
+  display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--rule);
+  border-radius:13px;padding:14px 15px;cursor:pointer;transition:opacity .15s;
+}
+ul.items li .box{
+  width:24px;height:24px;flex:none;border-radius:8px;border:2px solid var(--ink-faint);
+  display:flex;align-items:center;justify-content:center;
+}
+ul.items li .box svg{width:14px;height:14px;display:none}
+ul.items li .nm{font-size:16px;font-weight:650;flex:1;min-width:0}
+ul.items li .for{display:flex;gap:4px;flex:none}
+ul.items li .for i{width:8px;height:8px;border-radius:50%}
+ul.items li.next{border-color:var(--ink);box-shadow:0 0 0 3px rgba(22,24,29,.06)}
+ul.items li.done{opacity:.42}
+ul.items li.done .box{background:var(--ink);border-color:var(--ink)}
+ul.items li.done .box svg{display:block}
+ul.items li.done .nm{text-decoration:line-through}
+
+.focuscard{background:var(--card);border:1px solid var(--rule);border-radius:var(--r);padding:34px 22px;text-align:center}
+.focuscard .n{font-family:var(--f-num);font-size:12px;color:var(--ink-faint);letter-spacing:.1em}
+.focuscard .big{font-size:clamp(30px,8vw,44px);font-weight:800;letter-spacing:-.03em;line-height:1.05;margin:14px 0 6px}
+.focuscard .why{font-size:14px;color:var(--ink-soft)}
+.focuscard .go{
+  margin-top:24px;width:100%;background:var(--ink);color:#fff;border:none;border-radius:13px;
+  padding:16px;font-size:16px;font-weight:700;
+}
+.focuscard .skip{margin-top:12px;background:none;border:1px solid var(--rule);border-radius:11px;padding:11px 20px;color:var(--ink-soft);font-size:14px;font-weight:650}
+.focuscard .skip:disabled{opacity:.35;cursor:default}
+.alldone{text-align:center;padding:36px 18px}
+.alldone .big{font-size:30px;font-weight:800;letter-spacing:-.03em}
+.alldone p{color:var(--ink-soft);font-size:15px;margin:10px 0 0}
+
+/* ---------- WEEK ---------- */
+.grid{width:100%;border-collapse:separate;border-spacing:3px;table-layout:fixed}
+.grid th{font-size:10px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-faint);padding-bottom:2px}
+.grid td{padding:0;height:42px}
+.cell{width:100%;height:100%;border:none;border-radius:6px;background:#E6E6E0;color:#fff;font-size:11px;font-weight:800;letter-spacing:.03em;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.cell.empty{background:transparent;border:1px dashed var(--rule)}
+.cell span{font-size:8px;font-weight:600;opacity:.85;letter-spacing:0}
+.detail{margin:14px 0 20px;min-height:48px;background:var(--card);border:1px solid var(--rule);border-radius:13px;padding:13px 15px;font-size:14px;color:var(--ink-soft)}
+.detail b{color:var(--ink);font-weight:700}
+.nextlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+.nextlist li{display:flex;align-items:center;gap:10px;font-size:14px;padding:9px 2px;border-bottom:1px solid var(--rule-soft)}
+.nextlist li i{width:10px;height:10px;border-radius:50%;flex:none}
+.nextlist li .s{flex:1;font-weight:650}
+.nextlist li .w{font-family:var(--f-num);font-size:12px;color:var(--ink-soft)}
+
+/* ---------- SETUP ---------- */
+h2.sec{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin:26px 0 10px}
+h2.sec:first-child{margin-top:8px}
+.panel{background:var(--card);border:1px solid var(--rule);border-radius:13px;padding:14px 15px}
+.panel + .panel{margin-top:8px}
+.hint{font-size:13px;color:var(--ink-soft);line-height:1.45;margin:0 0 12px}
+.fieldrow{display:flex;align-items:center;gap:10px}
+.fieldrow label{font-size:13px;font-weight:650;flex:none;width:96px}
+select.inp,input.inp{
+  flex:1;min-width:0;font-size:14px;padding:9px 10px;border-radius:10px;
+  border:1px solid var(--rule);background:var(--paper);
+}
+.ttday{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap}
+.ttday button{border:1px solid var(--rule);background:var(--card);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:650;color:var(--ink-soft)}
+.ttday button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.ttrow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.ttrow + .ttrow{border-top:1px solid var(--rule-soft)}
+.ttrow .p{font-family:var(--f-num);font-size:11px;color:var(--ink-faint);width:74px;flex:none}
+
+details.subj{background:var(--card);border:1px solid var(--rule);border-radius:13px;margin-bottom:7px;overflow:hidden}
+details.subj summary{padding:13px 15px;font-size:15px;font-weight:650;display:flex;align-items:center;gap:10px;list-style:none}
+details.subj summary::-webkit-details-marker{display:none}
+details.subj summary i{width:11px;height:11px;border-radius:50%;flex:none}
+details.subj summary .rm{margin-left:auto;font-family:var(--f-num);font-size:12px;color:var(--ink-faint)}
+.subjbody{padding:2px 15px 15px;border-top:1px solid var(--rule-soft)}
+.mats{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.mat{display:inline-flex;align-items:center;gap:7px;background:var(--paper);border:1px solid var(--rule);border-radius:999px;padding:6px 8px 6px 12px;font-size:13px;font-weight:600}
+.mat button{background:none;border:none;color:var(--ink-faint);font-size:15px;line-height:1;padding:0 2px}
+.addrow{display:flex;gap:7px}
+.addrow input{flex:1;min-width:0;font-size:14px;padding:9px 10px;border-radius:10px;border:1px solid var(--rule);background:var(--paper)}
+.addrow button{border:1px solid var(--ink);background:var(--ink);color:#fff;border-radius:10px;padding:0 16px;font-size:14px;font-weight:650}
+.btn{
+  display:block;width:100%;border:1px solid var(--rule);background:var(--card);border-radius:11px;
+  padding:13px;font-size:14px;font-weight:650;margin-top:7px;
+}
+.btn.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+.btn.warn{color:#B3261E}
+textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padding:10px;border-radius:10px;border:1px solid var(--rule);background:var(--paper);resize:vertical}
+.status{font-family:var(--f-num);font-size:12px;color:var(--ink-faint);margin-top:11px;text-align:center}
+.warnbox{background:#FDF3F2;border:1px solid #F0D5D2;border-radius:10px;padding:11px 13px;font-size:12.5px;line-height:1.45;color:#8A3A33;margin:12px 0}
+.toast{
+  position:fixed;left:50%;bottom:78px;transform:translateX(-50%);
+  background:var(--ink);color:#fff;padding:11px 18px;border-radius:999px;font-size:13px;font-weight:650;
+  opacity:0;pointer-events:none;transition:opacity .2s;z-index:9;
+}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="eyebrow" id="eyebrow">—</div>
+  <div class="clock" id="clock">—</div>
+</div>
+
+<div class="views">
+
+  <!-- ============ NOW ============ -->
+  <section class="view flexcol on" id="v-now">
+    <div class="nowwrap">
+      <div class="card">
+        <div class="kicker" id="kicker"></div>
+        <h1 class="subject" id="subject"></h1>
+        <div class="roomline" id="roomWrap" hidden><span class="lbl">Room</span><span class="val" id="room"></span></div>
+        <div class="left" id="leftWrap" hidden>
+          <div class="num" id="leftNum"></div>
+          <div class="bar"><i id="leftBar"></i></div>
+        </div>
+        <div class="meta" id="meta"></div>
+      </div>
+      <div class="spine" id="spine"></div>
+    </div>
+    <div class="scrub">
+      <div class="hd"><span>Preview another time — testing only</span><button id="live">Back to now</button></div>
+      <div class="row">
+        <select id="sday">
+          <option value="1">Mon</option><option value="2">Tue</option><option value="3">Wed</option>
+          <option value="4">Thu</option><option value="5">Fri</option><option value="6">Sat</option>
+        </select>
+        <input type="range" id="smin" min="450" max="1010" step="1">
+        <span class="t" id="stime"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BAG ============ -->
+  <section class="view" id="v-bag">
+    <div class="baghd">
+      <div class="bagfor"><small>Packing for</small><span id="bagDay">—</span></div>
+      <button class="pill" id="focusToggle">One at a time</button>
+    </div>
+    <div class="classes" id="bagClasses"></div>
+    <div id="bagBody"></div>
+    <button class="btn" id="bagSwap" style="margin-top:18px"></button>
+    <button class="btn" id="bagReset">Untick everything</button>
+  </section>
+
+  <!-- ============ WEEK ============ -->
+  <section class="view" id="v-week">
+    <table class="grid" id="weekGrid"></table>
+    <div class="detail" id="weekDetail">Tap any class for the details.</div>
+    <h2 class="sec">When's my next…</h2>
+    <ul class="nextlist" id="nextList"></ul>
+  </section>
+
+  <!-- ============ SETUP ============ -->
+  <section class="view" id="v-setup">
+    <h2 class="sec">Social Studies rotation</h2>
+    <div class="panel">
+      <p class="hint">Geography, History and Modern Studies share one slot and swap over during the year. Change it here and the timetable, materials and bag list all follow.</p>
+      <div class="fieldrow">
+        <label for="rot">Right now</label>
+        <select class="inp" id="rot"></select>
+      </div>
+    </div>
+
+    <h2 class="sec">Timetable</h2>
+    <div class="panel">
+      <p class="hint">Mon, Tue and Thu have 7 periods. Wed and Fri have 6. Set each one when the official timetable arrives.</p>
+      <div class="ttday" id="ttDays"></div>
+      <div id="ttRows"></div>
+    </div>
+
+    <h2 class="sec">Subjects &amp; materials</h2>
+    <div id="subjList"></div>
+
+    <h2 class="sec">In the bag every day</h2>
+    <div class="panel">
+      <div class="mats" id="everyMats"></div>
+      <div class="addrow">
+        <input id="everyAdd" placeholder="Add an item" enterkeyhint="done">
+        <button id="everyAddBtn">Add</button>
+      </div>
+    </div>
+
+    <h2 class="sec">Sync</h2>
+    <div class="panel">
+      <p class="hint">The timetable is encrypted before it leaves this phone. GitHub only ever holds scrambled text. The key travels in the setup link, after the #, so it never reaches a server.</p>
+      <div class="fieldrow"><label for="ghOwner">GitHub user</label><input class="inp" id="ghOwner" placeholder="your-username" autocapitalize="off" autocorrect="off"></div>
+      <div class="fieldrow" style="margin-top:8px"><label for="ghRepo">Repository</label><input class="inp" id="ghRepo" placeholder="rowen-school" autocapitalize="off" autocorrect="off"></div>
+      <div class="fieldrow" style="margin-top:8px"><label for="ghBranch">Branch</label><input class="inp" id="ghBranch" placeholder="main" autocapitalize="off" autocorrect="off"></div>
+      <div class="fieldrow" style="margin-top:8px"><label for="ghPath">File</label><input class="inp" id="ghPath" placeholder="data.json" autocapitalize="off" autocorrect="off"></div>
+      <div class="fieldrow" style="margin-top:8px"><label for="syncUrl">Reads from</label><input class="inp" id="syncUrl" placeholder="https://you.github.io/repo/data.json" autocapitalize="off" autocorrect="off"></div>
+      <button class="btn" id="autoUrl">Work this out for me</button>
+      <div class="status" id="syncStatus">Not set up yet</div>
+    </div>
+
+    <h2 class="sec">Publishing</h2>
+    <div class="panel">
+      <div class="warnbox">The token below is like a key to that one repository. Keep it on your own devices only — it is never put in a setup link, and never type it anywhere other than this box.</div>
+      <div class="fieldrow"><label for="ghToken">Token</label><input class="inp" id="ghToken" type="password" placeholder="github_pat_…" autocapitalize="off" autocorrect="off"></div>
+      <button class="btn dark" id="publish">Publish to Rowen's devices</button>
+      <button class="btn" id="pullNow">Check for updates now</button>
+    </div>
+
+    <h2 class="sec">Device links</h2>
+    <div class="panel">
+      <p class="hint">Open a link once on a device and it remembers. Rowen's link hides this Setup tab, so nothing here can be knocked out by accident.</p>
+      <button class="btn dark" id="linkChild">Copy link for Rowen's devices</button>
+      <button class="btn" id="linkParent">Copy link for my other devices</button>
+      <button class="btn" id="newKey">Generate a new key</button>
+    </div>
+
+    <h2 class="sec">Backup</h2>
+    <div class="panel">
+      <button class="btn" id="showJson">Show backup code</button>
+      <textarea id="jsonBox" hidden placeholder="Paste a backup code here, then tap Restore"></textarea>
+      <button class="btn" id="restore" hidden>Restore from this code</button>
+      <button class="btn warn" id="reset">Reset everything to the defaults</button>
+    </div>
+    <div style="height:20px"></div>
+  </section>
+
+</div>
+
+<nav>
+  <button data-v="now" class="on">Now</button>
+  <button data-v="bag">Bag</button>
+  <button data-v="week">Week</button>
+  <button data-v="setup">Setup</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+
+/* ==================================================================
+   THE SCHOOL DAY — real bell times
+   ================================================================== */
+const SHAPE = {
+  A:[["08:50","09:40","P",1],["09:40","10:30","P",2],["10:30","10:45","B","Interval"],
+     ["10:45","11:35","P",3],["11:35","12:25","P",4],["12:25","13:15","P",5],
+     ["13:15","13:55","B","Lunch"],["13:55","14:45","P",6],["14:45","15:35","P",7]],
+  B:[["08:50","09:40","P",1],["09:40","10:30","P",2],["10:30","10:45","B","Interval"],
+     ["10:45","11:35","P",3],["11:35","12:25","P",4],["12:25","13:05","B","Lunch"],
+     ["13:05","13:55","P",5],["13:55","14:45","P",6]]
+};
+const DAYTYPE = {1:"A",2:"A",3:"B",4:"A",5:"B"};
+const DAYNAME = {1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",5:"Friday",6:"Saturday",7:"Sunday"};
+const SHORT   = {1:"Mon",2:"Tue",3:"Wed",4:"Thu",5:"Fri"};
+const PERIODS = d => DAYTYPE[d]==="A" ? 7 : 6;
+const ROT_KEYS = ["geography","history","modern"];
+
+/* ==================================================================
+   DEFAULTS — provisional until the official timetable arrives
+   ================================================================== */
+const DEFAULTS = {
+  rotation:"geography",
+  everyday:["Planner","Pencil case","Water bottle","Charged phone"],
+  subjects:{
+    english:  {name:"English",         code:"EN", colour:"#CE3A2E", room:"B14", mats:["English jotter","English textbook","Reading book"]},
+    literacy: {name:"Literacy",        code:"LI", colour:"#E86A4C", room:"B11", mats:["Literacy jotter"]},
+    spanish:  {name:"Spanish",         code:"SP", colour:"#E09A0E", room:"B22", mats:["Spanish jotter","Spanish textbook"]},
+    maths:    {name:"Maths",           code:"MA", colour:"#1E5FA8", room:"C08", mats:["Maths jotter","Maths textbook","Calculator","Ruler"]},
+    science:  {name:"Science",         code:"SC", colour:"#2E7D4F", room:"S03", mats:["Science jotter","Science textbook"]},
+    geography:{name:"Geography",       code:"GE", colour:"#8A5A2B", room:"D12", mats:["Geography jotter"]},
+    history:  {name:"History",         code:"HI", colour:"#6B4B2A", room:"D14", mats:["History jotter"]},
+    modern:   {name:"Modern Studies",  code:"MS", colour:"#B2743C", room:"D15", mats:["Modern Studies jotter"]},
+    ict:      {name:"ICT",             code:"IT", colour:"#128089", room:"T04", mats:["ICT jotter"]},
+    technical:{name:"Technical",       code:"TE", colour:"#46536B", room:"T11", mats:["Technical jotter"]},
+    homeec:   {name:"Home Economics",  code:"HE", colour:"#6B3FA0", room:"T07", mats:["Apron","Tupperware tub","Home Ec folder"]},
+    art:      {name:"Art & Design",    code:"AR", colour:"#B5297F", room:"A02", mats:["Sketchbook","Pencils"]},
+    music:    {name:"Music",           code:"MU", colour:"#5B4BC4", room:"A09", mats:["Music jotter"]},
+    pe:       {name:"PE",              code:"PE", colour:"#23262F", room:"Games Hall", mats:["PE kit","Trainers"]},
+    re:       {name:"RE",              code:"RE", colour:"#6E8B4F", room:"D04", mats:["RE jotter"]},
+    socialed: {name:"Social Education",code:"SE", colour:"#7A736B", room:"D07", mats:["Social Ed jotter"]}
+  },
+  /* "social" = the rotating Social Studies slot. Placeholder arrangement. */
+  timetable:{
+    1:["english","maths","science","pe","spanish","art","re"],
+    2:["maths","english","homeec","homeec","social","music","literacy"],
+    3:["spanish","science","technical","technical","english","pe"],
+    4:["maths","ict","art","spanish","english","music","socialed"],
+    5:["science","maths","re","pe","social","social"]
+  }
+};
+
+/* ==================================================================
+   STORAGE
+   ================================================================== */
+const KEY="s1.data.v1", TKEY="s1.ticks.v1";
+let D, ticks;
+
+function load(){
+  try{ D = JSON.parse(localStorage.getItem(KEY)); }catch(e){ D=null; }
+  if(!D || !D.subjects) D = JSON.parse(JSON.stringify(DEFAULTS));
+  try{ ticks = JSON.parse(localStorage.getItem(TKEY)) || {}; }catch(e){ ticks={}; }
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(D)); }catch(e){} }
+function saveTicks(){
+  const keep={}, cut=isoDate(addDays(new Date(),-7));
+  for(const k in ticks) if(k>=cut) keep[k]=ticks[k];
+  ticks=keep;
+  try{ localStorage.setItem(TKEY, JSON.stringify(ticks)); }catch(e){}
+}
+
+/* ---- sync configuration (separate store: never leaves via a link except k/u/r) ---- */
+const SKEY="s1.sync.v1";
+let S;
+function loadSync(){
+  try{ S=JSON.parse(localStorage.getItem(SKEY)); }catch(e){ S=null; }
+  if(!S) S={url:"", key:"", role:"parent", owner:"", repo:"", branch:"main", path:"data.json", token:"", last:null};
+  return S;
+}
+function saveSync(){ try{ localStorage.setItem(SKEY, JSON.stringify(S)); }catch(e){} }
+loadSync();
+
+/* import from a setup link */
+(function importFragment(){
+  const h=location.hash;
+  try{
+    if(h.indexOf("#s=")===0){
+      const p=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(h.slice(3))))));
+      S.key=p.k||S.key; S.url=p.u||S.url; S.role=p.r||"child"; S.last=null;
+      saveSync();
+    } else if(h.indexOf("#d=")===0){
+      localStorage.setItem(KEY, decodeURIComponent(escape(atob(decodeURIComponent(h.slice(3))))));
+    }
+  }catch(e){}
+  if(h) history.replaceState(null,"",location.pathname+location.search);
+})();
+load();
+
+/* ==================================================================
+   HELPERS
+   ================================================================== */
+const $ = id => document.getElementById(id);
+const mins = t => (+t.slice(0,2))*60 + (+t.slice(3,5));
+const nice = m => { let h=Math.floor(m/60); const x=m%60, ap=h<12?"am":"pm"; h=h%12||12;
+                    return h+"."+String(x).padStart(2,"0")+ap; };
+const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+const isoDate=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const dow = d => d.getDay()===0 ? 7 : d.getDay();
+
+function resolve(key){
+  if(!key) return null;
+  const k = key==="social" ? D.rotation : key;
+  const s = D.subjects[k];
+  if(!s) return null;
+  return {key:k, slot:key, name:s.name, code:s.code, colour:s.colour, room:s.room, mats:s.mats||[],
+          rotating: key==="social"};
+}
+function subjectAt(day, period){ return resolve((D.timetable[day]||[])[period-1]); }
+
+function blocksFor(day){
+  const shape = SHAPE[DAYTYPE[day]];
+  if(!shape) return [];
+  return shape.map(([a,b,kind,val])=>({
+    start:mins(a), end:mins(b), kind,
+    period: kind==="P"?val:null, breakName: kind==="B"?val:null,
+    subject: kind==="P" ? subjectAt(day,val) : null
+  }));
+}
+function nextSchoolDay(day){ let d=day; for(let i=0;i<7;i++){ d=d%7+1; if(DAYTYPE[d]) return d; } return 1; }
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.classList.add("on"); setTimeout(()=>t.classList.remove("on"),1700); }
+
+/* ==================================================================
+   NOW
+   ================================================================== */
+const HAND_BEFORE=5, HAND_AFTER=4;
+
+function paintNow(day, now){
+  $("eyebrow").textContent = DAYTYPE[day] ? DAYNAME[day] : "Weekend";
+  $("clock").textContent = nice(now);
+
+  const blocks = blocksFor(day);
+  let accent="#46536B", kicker="", subject="", room=null, meta="", left=null;
+
+  if(!blocks.length){
+    const nd=nextSchoolDay(day), first=blocksFor(nd)[0];
+    kicker="No school today"; subject="Weekend";
+    if(first && first.subject){
+      accent=first.subject.colour;
+      meta=`Back on <b>${DAYNAME[nd]}</b>. First up is <b>${first.subject.name}</b>, room ${first.subject.room}, at ${nice(first.start)}.`;
+    }
+  } else {
+    const open=blocks[0].start, close=blocks[blocks.length-1].end;
+    const idx=blocks.findIndex(b=>now>=b.start&&now<b.end);
+    const cur=idx>-1?blocks[idx]:null, nxt=idx>-1?blocks[idx+1]:null;
+
+    if(now<open){
+      const f=blocks[0];
+      if(f.subject){ accent=f.subject.colour; subject=f.subject.name; room=f.subject.room; }
+      kicker="First today";
+      meta=`Starts at <b>${nice(f.start)}</b>.`;
+      left={done:0,total:1,text:`${open-now} min until the first bell`};
+
+    } else if(now>=close){
+      const nd=nextSchoolDay(day), f=blocksFor(nd)[0];
+      kicker="Home time"; subject="Day done";
+      if(f && f.subject){
+        accent=f.subject.colour;
+        meta=`Back on <b>${DAYNAME[nd]}</b>. First up is <b>${f.subject.name}</b>, room ${f.subject.room}, at ${nice(f.start)}.`;
+      }
+
+    } else if(cur.kind==="P" && now-cur.start<=HAND_AFTER){
+      accent=cur.subject.colour; kicker="Go to"; subject=cur.subject.name; room=cur.subject.room;
+      meta=`Started at <b>${nice(cur.start)}</b>. You're in the right place.`;
+      left={done:now-cur.start,total:cur.end-cur.start,text:`${cur.end-now} min of this class left`};
+
+    } else if(nxt && nxt.start-now<=HAND_BEFORE){
+      const t = nxt.kind==="P" ? nxt.subject : null;
+      accent = t ? t.colour : "#46536B";
+      kicker = "Next — bell in "+(nxt.start-now)+" min";
+      subject = t ? t.name : nxt.breakName;
+      if(t){ room=t.room; meta=`Starts at <b>${nice(nxt.start)}</b>.`; }
+      else {
+        const after = blocks[blocks.indexOf(nxt)+1];
+        meta = `${nxt.end-nxt.start} minutes, then <b>${after&&after.subject?after.subject.name:"home"}</b>.`;
+      }
+
+    } else if(cur.kind==="B"){
+      kicker=cur.breakName; subject=cur.breakName;
+      if(nxt&&nxt.subject) meta=`After it: <b>${nxt.subject.name}</b>, room ${nxt.subject.room}, at ${nice(nxt.start)}.`;
+      left={done:now-cur.start,total:cur.end-cur.start,text:`${cur.end-now} min left`};
+
+    } else {
+      accent=cur.subject.colour; kicker="Now"; subject=cur.subject.name; room=cur.subject.room;
+      const after = nxt ? (nxt.kind==="P"?nxt.subject.name:nxt.breakName) : "home time";
+      meta=`Then <b>${after}</b> at ${nice(cur.end)}.`;
+      left={done:now-cur.start,total:cur.end-cur.start,text:`${cur.end-now} min left`};
+    }
+  }
+
+  document.documentElement.style.setProperty("--accent",accent);
+  $("kicker").textContent=kicker;
+  $("subject").textContent=subject;
+  $("roomWrap").hidden=!room; if(room) $("room").textContent=room;
+  $("meta").innerHTML=meta;
+  $("leftWrap").hidden=!left;
+  if(left){ $("leftNum").textContent=left.text;
+            $("leftBar").style.width=Math.max(0,Math.min(100,100-(left.done/left.total)*100))+"%"; }
+
+  const sp=$("spine"); sp.innerHTML="";
+  if(blocks.length){
+    const open=blocks[0].start, close=blocks[blocks.length-1].end, span=close-open;
+    blocks.forEach(b=>{
+      const el=document.createElement("div");
+      el.className="blk"+(b.kind==="B"?" brk":"")+(now>=b.end?" past":"")+(now>=b.start&&now<b.end?" cur":"");
+      el.style.flex=(b.end-b.start)+" 0 0";
+      if(b.subject){ el.style.background=b.subject.colour; el.innerHTML=`<em>${b.subject.code}</em>`; }
+      el.title=nice(b.start)+" — "+(b.subject?b.subject.name:b.breakName);
+      sp.appendChild(el);
+    });
+    if(now>open&&now<close){
+      const l=document.createElement("div"); l.className="nowline";
+      l.style.top=(((now-open)/span)*100)+"%"; sp.appendChild(l);
+    }
+  }
+}
+
+/* scrubber */
+let manual=null;
+function tick(){
+  let day, now;
+  if(manual){ day=manual.day; now=manual.now; }
+  else { const d=new Date(); day=dow(d); now=d.getHours()*60+d.getMinutes(); }
+  paintNow(day, now);
+  $("sday").value = day>5?6:day; $("smin").value=now; $("stime").textContent=nice(now);
+}
+function setManual(){ manual={day:+$("sday").value, now:+$("smin").value}; tick(); }
+$("sday").addEventListener("input",setManual);
+$("smin").addEventListener("input",setManual);
+$("live").addEventListener("click",()=>{manual=null;tick();});
+
+/* ==================================================================
+   BAG
+   ================================================================== */
+let bagOffset=null, focusMode=false, skipped={iso:null,names:[]};
+
+function bagTarget(){
+  const d=new Date(), day=dow(d), t=d.getHours()*60+d.getMinutes();
+  let base;
+  if(DAYTYPE[day] && t < 15*60) base=new Date(d);       // still today — check you have it all
+  else { base=new Date(d); do{ base=addDays(base,1); }while(!DAYTYPE[dow(base)]); }
+  if(bagOffset==="other"){ let x=new Date(base); do{ x=addDays(x,1); }while(!DAYTYPE[dow(x)]); return x; }
+  return base;
+}
+
+function bagList(day){
+  const seen=new Map();
+  (D.everyday||[]).forEach(m=>{ if(!seen.has(m)) seen.set(m,{name:m, every:true, cols:[]}); });
+  for(let p=1;p<=PERIODS(day);p++){
+    const s=subjectAt(day,p); if(!s) continue;
+    s.mats.forEach(m=>{
+      if(!seen.has(m)) seen.set(m,{name:m, every:false, cols:[]});
+      const e=seen.get(m); if(!e.cols.includes(s.colour)) e.cols.push(s.colour);
+    });
+  }
+  return [...seen.values()];
+}
+
+function paintBag(){
+  const date=bagTarget(), day=dow(date), iso=isoDate(date);
+  const today=isoDate(new Date());
+  const label = iso===today ? "Today" : (iso===isoDate(addDays(new Date(),1)) ? "Tomorrow" : DAYNAME[day]);
+  $("bagDay").textContent = label==="Today"||label==="Tomorrow" ? label+" · "+SHORT[day] : label;
+
+  const cls=$("bagClasses"); cls.innerHTML="";
+  for(let p=1;p<=PERIODS(day);p++){
+    const s=subjectAt(day,p); if(!s) continue;
+    const c=document.createElement("span"); c.className="chip";
+    c.innerHTML=`<i style="background:${s.colour}"></i>${s.name}`;
+    cls.appendChild(c);
+  }
+
+  const list=bagList(day);
+  const done=ticks[iso]||[];
+  const body=$("bagBody"); body.innerHTML="";
+
+  const remaining=list.filter(i=>!done.includes(i.name));
+
+  if(!remaining.length){
+    body.innerHTML=`<div class="alldone"><div class="big">Bag packed</div><p>Everything on the list is in. Nothing else to do tonight.</p></div>`;
+  } else if(focusMode){
+    if(skipped.iso!==iso) skipped={iso:iso, names:[]};
+    let queue=remaining.filter(i=>!skipped.names.includes(i.name));
+    if(!queue.length){ skipped.names=[]; queue=remaining; }   // been round them all, start again
+    const it=queue[0];
+    const parked=remaining.length-queue.length;
+    const card=document.createElement("div"); card.className="focuscard";
+    card.innerHTML=`<div class="n">${list.length-remaining.length+1} of ${list.length}${parked?" &middot; "+parked+" to come back to":""}</div>
+      <div class="big">${it.name}</div>
+      <div class="why">${it.every?"Needed every day":"For "+subjectsUsing(day,it.name).join(" and ")}</div>
+      <button class="go">Packed it</button>
+      <button class="skip"${remaining.length<2?" disabled":""}>Come back to this one</button>`;
+    card.querySelector(".go").addEventListener("click",()=>{
+      skipped.names=skipped.names.filter(n=>n!==it.name);
+      toggle(iso,it.name,true);
+    });
+    const sk=card.querySelector(".skip");
+    if(remaining.length>1) sk.addEventListener("click",()=>{
+      if(!skipped.names.includes(it.name)) skipped.names.push(it.name);
+      paintBag();
+    });
+    body.appendChild(card);
+  } else {
+    const pr=document.createElement("div"); pr.className="prog";
+    pr.innerHTML=`<i style="width:${(list.length-remaining.length)/list.length*100}%"></i>`;
+    const pt=document.createElement("div"); pt.className="progtxt";
+    pt.textContent=`${list.length-remaining.length} of ${list.length} packed`;
+    body.appendChild(pr); body.appendChild(pt);
+
+    const ul=document.createElement("ul"); ul.className="items";
+    let firstOpen=true;
+    list.forEach(it=>{
+      const isDone=done.includes(it.name);
+      const li=document.createElement("li");
+      li.className=(isDone?"done":"")+(!isDone&&firstOpen?" next":"");
+      if(!isDone) firstOpen=false;
+      li.innerHTML=`<span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span>
+        <span class="nm">${it.name}</span>
+        <span class="for">${it.cols.map(c=>`<i style="background:${c}"></i>`).join("")}</span>`;
+      li.addEventListener("click",()=>toggle(iso,it.name,!isDone));
+      ul.appendChild(li);
+    });
+    body.appendChild(ul);
+  }
+
+  $("bagSwap").textContent = bagOffset==="other" ? "Back to "+ (iso===today?"today":"the next school day") : "Pack for the day after instead";
+  $("focusToggle").classList.toggle("on",focusMode);
+}
+function subjectsUsing(day,mat){
+  const out=[];
+  for(let p=1;p<=PERIODS(day);p++){
+    const s=subjectAt(day,p);
+    if(s&&s.mats.includes(mat)&&!out.includes(s.name)) out.push(s.name);
+  }
+  return out.length?out:["today"];
+}
+function toggle(iso,name,on){
+  const arr=ticks[iso]||[];
+  if(on){ if(!arr.includes(name)) arr.push(name); }
+  else { const i=arr.indexOf(name); if(i>-1) arr.splice(i,1); }
+  ticks[iso]=arr; saveTicks(); paintBag();
+}
+$("focusToggle").addEventListener("click",()=>{focusMode=!focusMode;paintBag();});
+$("bagSwap").addEventListener("click",()=>{bagOffset = bagOffset==="other"?null:"other"; paintBag();});
+$("bagReset").addEventListener("click",()=>{ ticks[isoDate(bagTarget())]=[]; saveTicks(); paintBag(); });
+
+/* ==================================================================
+   WEEK
+   ================================================================== */
+function paintWeek(){
+  const g=$("weekGrid"); g.innerHTML="";
+  const hr=g.insertRow();
+  for(let d=1;d<=5;d++){ const th=document.createElement("th"); th.textContent=SHORT[d]; hr.appendChild(th); }
+  for(let p=1;p<=7;p++){
+    const tr=g.insertRow();
+    for(let d=1;d<=5;d++){
+      const td=tr.insertCell();
+      if(p>PERIODS(d)){ td.innerHTML='<div class="cell empty"></div>'; continue; }
+      const s=subjectAt(d,p);
+      const b=document.createElement("button"); b.className="cell";
+      if(s){ b.style.background=s.colour; b.innerHTML=`${s.code}<span>${s.room}</span>`; }
+      else { b.className="cell empty"; }
+      const blk=blocksFor(d).find(x=>x.period===p);
+      b.addEventListener("click",()=>{
+        $("weekDetail").innerHTML = s
+          ? `<b>${SHORT[d]} · ${nice(blk.start)}</b> — ${s.name}, room ${s.room}${s.rotating?" (rotates during the year)":""}. Bring: ${s.mats.join(", ")||"nothing extra"}.`
+          : `<b>${SHORT[d]} period ${p}</b> — not set yet.`;
+      });
+      td.appendChild(b);
+    }
+  }
+
+  const now=new Date(), curDay=dow(now), curMin=now.getHours()*60+now.getMinutes();
+  const found=new Map();
+  for(let i=0;i<=7;i++){
+    const d=((curDay-1+i)%7)+1;
+    if(!DAYTYPE[d]) continue;
+    for(let p=1;p<=PERIODS(d);p++){
+      const s=subjectAt(d,p); if(!s||found.has(s.name)) continue;
+      const blk=blocksFor(d).find(x=>x.period===p);
+      if(i===0 && blk.start<=curMin) continue;
+      found.set(s.name,{s, when: i===0?"today "+nice(blk.start) : (i===1?"tomorrow ":SHORT[d]+" ")+nice(blk.start)});
+    }
+  }
+  const ul=$("nextList"); ul.innerHTML="";
+  [...found.values()].forEach(({s,when})=>{
+    const li=document.createElement("li");
+    li.innerHTML=`<i style="background:${s.colour}"></i><span class="s">${s.name}</span><span class="w">${when}</span>`;
+    ul.appendChild(li);
+  });
+}
+
+/* ==================================================================
+   SETUP
+   ================================================================== */
+let ttDay=1;
+
+function paintSetup(){
+  const rot=$("rot"); rot.innerHTML="";
+  ROT_KEYS.forEach(k=>{
+    const o=document.createElement("option"); o.value=k; o.textContent=D.subjects[k].name;
+    if(D.rotation===k) o.selected=true; rot.appendChild(o);
+  });
+
+  const days=$("ttDays"); days.innerHTML="";
+  for(let d=1;d<=5;d++){
+    const b=document.createElement("button");
+    b.textContent=SHORT[d]+" ("+PERIODS(d)+")";
+    if(d===ttDay) b.classList.add("on");
+    b.addEventListener("click",()=>{ttDay=d;paintSetup();});
+    days.appendChild(b);
+  }
+
+  const rows=$("ttRows"); rows.innerHTML="";
+  const blks=blocksFor(ttDay);
+  for(let p=1;p<=PERIODS(ttDay);p++){
+    const blk=blks.find(x=>x.period===p);
+    const row=document.createElement("div"); row.className="ttrow";
+    row.innerHTML=`<span class="p">P${p} · ${nice(blk.start)}</span>`;
+    const sel=document.createElement("select"); sel.className="inp";
+    sel.innerHTML=`<option value="">— not set —</option><option value="social">Social Studies (rotating)</option>`;
+    Object.keys(D.subjects).forEach(k=>{
+      const o=document.createElement("option"); o.value=k; o.textContent=D.subjects[k].name;
+      sel.appendChild(o);
+    });
+    sel.value=(D.timetable[ttDay]||[])[p-1]||"";
+    sel.addEventListener("change",()=>{
+      if(!D.timetable[ttDay]) D.timetable[ttDay]=[];
+      D.timetable[ttDay][p-1]=sel.value; save(); refreshAll();
+    });
+    row.appendChild(sel); rows.appendChild(row);
+  }
+
+  const sl=$("subjList"); sl.innerHTML="";
+  Object.keys(D.subjects).forEach(k=>{
+    const s=D.subjects[k];
+    const det=document.createElement("details"); det.className="subj";
+    det.innerHTML=`<summary><i style="background:${s.colour}"></i>${s.name}<span class="rm">${s.room}</span></summary>
+      <div class="subjbody">
+        <div class="fieldrow" style="margin-top:10px"><label>Called</label><input class="inp nmI" value="${s.name.replace(/"/g,"&quot;")}"></div>
+        <div class="fieldrow" style="margin-top:8px"><label>Room</label><input class="inp rmI" value="${s.room.replace(/"/g,"&quot;")}"></div>
+        <div class="mats"></div>
+        <div class="addrow"><input placeholder="Add a jotter, book or kit item" enterkeyhint="done"><button>Add</button></div>
+      </div>`;
+    const nmI=det.querySelector(".nmI"), rmI=det.querySelector(".rmI");
+    nmI.addEventListener("change",()=>{ s.name=nmI.value.trim()||s.name; save(); refreshAll(); });
+    rmI.addEventListener("change",()=>{ s.room=rmI.value.trim(); save(); refreshAll(); });
+
+    const mw=det.querySelector(".mats");
+    (s.mats||[]).forEach(m=>{
+      const el=document.createElement("span"); el.className="mat";
+      el.innerHTML=`${m}<button aria-label="Remove ${m}">×</button>`;
+      el.querySelector("button").addEventListener("click",()=>{
+        s.mats.splice(s.mats.indexOf(m),1); save(); refreshAll();
+      });
+      mw.appendChild(el);
+    });
+    const inp=det.querySelector(".addrow input"), btn=det.querySelector(".addrow button");
+    const add=()=>{ const v=inp.value.trim(); if(!v) return;
+      s.mats=s.mats||[]; if(!s.mats.includes(v)) s.mats.push(v);
+      save(); refreshAll(); };
+    btn.addEventListener("click",add);
+    inp.addEventListener("keydown",e=>{ if(e.key==="Enter") add(); });
+    sl.appendChild(det);
+  });
+
+  const em=$("everyMats"); em.innerHTML="";
+  (D.everyday||[]).forEach(m=>{
+    const el=document.createElement("span"); el.className="mat";
+    el.innerHTML=`${m}<button aria-label="Remove ${m}">×</button>`;
+    el.querySelector("button").addEventListener("click",()=>{
+      D.everyday.splice(D.everyday.indexOf(m),1); save(); refreshAll();
+    });
+    em.appendChild(el);
+  });
+}
+$("rot").addEventListener("change",e=>{ D.rotation=e.target.value; save(); refreshAll(); });
+const addEvery=()=>{ const v=$("everyAdd").value.trim(); if(!v) return;
+  D.everyday=D.everyday||[]; if(!D.everyday.includes(v)) D.everyday.push(v);
+  $("everyAdd").value=""; save(); refreshAll(); };
+$("everyAddBtn").addEventListener("click",addEvery);
+$("everyAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addEvery(); });
+
+/* ==================================================================
+   SYNC — AES-GCM encrypted blob on GitHub Pages
+   ================================================================== */
+const CRY = (window.crypto && crypto.subtle) ? crypto.subtle : null;
+const b64  = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
+const ub64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
+const setStatus = t => { const e=$("syncStatus"); if(e) e.textContent=t; };
+
+async function useKey(k){ return CRY.importKey("raw", ub64(k), {name:"AES-GCM"}, false, ["encrypt","decrypt"]); }
+async function seal(obj,k){
+  const key=await useKey(k), iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await CRY.encrypt({name:"AES-GCM",iv}, key, new TextEncoder().encode(JSON.stringify(obj)));
+  return {v:1, iv:b64(iv), ct:b64(ct), updated:new Date().toISOString()};
+}
+async function unseal(pkg,k){
+  const key=await useKey(k);
+  const pt=await CRY.decrypt({name:"AES-GCM",iv:ub64(pkg.iv)}, key, ub64(pkg.ct));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+function guessUrl(){
+  if(S.owner&&S.repo) return `https://${S.owner}.github.io/${S.repo}/${S.path||"data.json"}`;
+  try{ return new URL(S.path||"data.json", location.href).href; }catch(e){ return ""; }
+}
+
+async function pull(quiet){
+  if(!CRY){ setStatus("Needs to be opened over https"); return; }
+  if(!S.url||!S.key){ setStatus("Not set up yet"); return; }
+  try{
+    const r=await fetch(S.url+(S.url.indexOf("?")>-1?"&":"?")+"t="+Date.now(), {cache:"no-store"});
+    if(!r.ok) throw new Error("not found");
+    const pkg=await r.json();
+    if(S.last && pkg.updated && pkg.updated<=S.last){ setStatus("Up to date"); return; }
+    D=await unseal(pkg,S.key); save();
+    S.last=pkg.updated||new Date().toISOString(); saveSync();
+    refreshAll();
+    if(!quiet) toast("Timetable updated");
+    setStatus("Updated "+new Date(S.last).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}));
+  }catch(e){ setStatus("Couldn't check just now — using the saved copy"); }
+}
+
+async function publish(){
+  if(!CRY) return toast("Open the app over https to publish");
+  if(!S.owner||!S.repo||!S.token) return toast("Fill in the GitHub details first");
+  if(!S.key) return toast("Generate a key first");
+  const path=S.path||"data.json", branch=S.branch||"main";
+  const api=`https://api.github.com/repos/${S.owner}/${S.repo}/contents/${path}`;
+  const hd={Authorization:"Bearer "+S.token, Accept:"application/vnd.github+json"};
+  toast("Publishing…");
+  try{
+    const pkg=await seal(D,S.key);
+    let sha=null;
+    const g=await fetch(api+"?ref="+branch,{headers:hd});
+    if(g.ok) sha=(await g.json()).sha;
+    const body={message:"Update timetable", content:btoa(JSON.stringify(pkg)), branch};
+    if(sha) body.sha=sha;
+    const p=await fetch(api,{method:"PUT",headers:Object.assign({"Content-Type":"application/json"},hd),body:JSON.stringify(body)});
+    if(!p.ok){ const j=await p.json().catch(()=>({})); throw new Error(j.message||p.status); }
+    S.last=pkg.updated; saveSync();
+    setStatus("Published "+new Date(S.last).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}));
+    toast("Published — her devices will pick it up");
+  }catch(e){ toast("Didn't publish: "+e.message); }
+}
+
+function makeLink(role){
+  return location.origin+location.pathname+"#s="+
+         encodeURIComponent(btoa(unescape(encodeURIComponent(JSON.stringify({k:S.key,u:S.url,r:role})))));
+}
+function copy(text,msg){
+  if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>toast(msg),()=>toast("Copy failed"));
+  else toast("Copy not available here");
+}
+
+function paintSync(){
+  $("ghOwner").value=S.owner||""; $("ghRepo").value=S.repo||"";
+  $("ghBranch").value=S.branch||"main"; $("ghPath").value=S.path||"data.json";
+  $("syncUrl").value=S.url||""; $("ghToken").value=S.token||"";
+}
+[["ghOwner","owner"],["ghRepo","repo"],["ghBranch","branch"],["ghPath","path"],["syncUrl","url"],["ghToken","token"]]
+  .forEach(([id,k])=>$(id).addEventListener("change",()=>{ S[k]=$(id).value.trim(); saveSync(); }));
+$("autoUrl").addEventListener("click",()=>{ S.url=guessUrl(); saveSync(); paintSync(); toast("Filled in"); });
+$("publish").addEventListener("click",publish);
+$("pullNow").addEventListener("click",()=>pull(false));
+$("linkChild").addEventListener("click",()=>{
+  if(!S.key||!S.url) return toast("Set the key and address first");
+  copy(makeLink("child"),"Link copied — send it to her devices");
+});
+$("linkParent").addEventListener("click",()=>{
+  if(!S.key||!S.url) return toast("Set the key and address first");
+  copy(makeLink("parent"),"Link copied");
+});
+$("newKey").addEventListener("click",()=>{
+  if(!CRY) return toast("Open the app over https first");
+  if(S.key && !confirm("A new key means every device needs the new link again. Carry on?")) return;
+  S.key=b64(crypto.getRandomValues(new Uint8Array(32))); saveSync();
+  toast("New key made — resend the links");
+});
+
+/* child devices don't get the Setup tab */
+function applyRole(){
+  const child = S.role==="child";
+  const btn=document.querySelector('nav button[data-v="setup"]');
+  if(btn) btn.hidden=child;
+  if(child && $("v-setup").classList.contains("on")){
+    document.querySelector('nav button[data-v="now"]').click();
+  }
+}
+
+/* ==================================================================
+   TABS
+   ================================================================== */
+$("showJson").addEventListener("click",()=>{
+  const b=$("jsonBox"); b.hidden=!b.hidden; $("restore").hidden=b.hidden;
+  if(!b.hidden) b.value=JSON.stringify(D);
+});
+$("restore").addEventListener("click",()=>{
+  try{ const o=JSON.parse($("jsonBox").value); if(!o.subjects) throw 0;
+       D=o; save(); refreshAll(); toast("Restored"); }
+  catch(e){ toast("That code didn't work"); }
+});
+$("reset").addEventListener("click",()=>{
+  if(confirm("Put everything back to the starting defaults?")){
+    D=JSON.parse(JSON.stringify(DEFAULTS)); save(); refreshAll(); toast("Reset");
+  }
+});
+
+/* ==================================================================
+   TABS
+   ================================================================== */
+document.querySelectorAll("nav button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    document.querySelectorAll("nav button").forEach(x=>x.classList.toggle("on",x===b));
+    document.querySelectorAll(".view").forEach(v=>v.classList.toggle("on", v.id==="v-"+b.dataset.v));
+    if(b.dataset.v!=="now"){
+      const d=new Date();
+      $("eyebrow").textContent=DAYNAME[dow(d)];
+      $("clock").textContent=nice(d.getHours()*60+d.getMinutes());
+      document.documentElement.style.setProperty("--accent","#46536B");
+    } else tick();
+    refreshAll();
+  });
+});
+
+function refreshAll(){ tick(); paintBag(); paintWeek(); paintSetup(); paintSync(); }
+applyRole();
+refreshAll();
+pull(true);
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden){ tick(); paintBag(); pull(true); }
+});
+setInterval(()=>{ if(!manual) tick(); }, 15000);
+setInterval(()=>{ if(!document.hidden) pull(true); }, 30*60*1000);
+</script>
+</body>
+</html>
