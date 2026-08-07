@@ -89,6 +89,15 @@ nav button.on{color:var(--ink);border-top-color:var(--accent)}
 .scrub input[type=range]{flex:1;accent-color:var(--accent)}
 .scrub .t{font-family:var(--f-num);font-size:13px;color:var(--ink-soft);min-width:52px;text-align:right}
 
+.demobar{
+  margin:0 18px 10px;background:#FFF6E0;border:1px solid #E9D398;color:#7A5A12;
+  border-radius:10px;padding:9px 13px;font-size:12.5px;font-weight:700;text-align:center;line-height:1.35;
+}
+.checkrow{display:flex;align-items:center;gap:11px;font-size:14px;font-weight:650;padding:2px 0 14px}
+.checkrow input{width:21px;height:21px;flex:none;accent-color:var(--ink)}
+
+.verline{font-family:var(--f-num);font-size:10px;color:var(--ink-faint);text-align:center;padding:8px 0 2px;letter-spacing:.02em}
+
 /* ---------- BAG ---------- */
 .baghd{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin:4px 0 16px}
 .bagfor{font-size:26px;font-weight:800;letter-spacing:-.03em;line-height:1.05}
@@ -211,6 +220,8 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
   <div class="clock" id="clock">—</div>
 </div>
 
+<div class="demobar" id="demobar" hidden>Demo timetable — this isn't the real one yet</div>
+
 <div class="views">
 
   <!-- ============ NOW ============ -->
@@ -239,6 +250,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
         <span class="t" id="stime"></span>
       </div>
     </div>
+    <div class="verline" id="verline"></div>
   </section>
 
   <!-- ============ BAG ============ -->
@@ -275,6 +287,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
     <h2 class="sec">Timetable</h2>
     <div class="panel">
       <p class="hint">Mon, Tue and Thu have 7 periods. Wed and Fri have 6. Set each one when the official timetable arrives.</p>
+      <label class="checkrow"><input type="checkbox" id="demoChk"> This is a demo timetable</label>
       <div class="ttday" id="ttDays"></div>
       <div id="ttRows"></div>
     </div>
@@ -366,6 +379,7 @@ const ROT_KEYS = ["geography","history","modern"];
    DEFAULTS — provisional until the official timetable arrives
    ================================================================== */
 const DEFAULTS = {
+  demo:true,
   rotation:"geography",
   everyday:["Planner","Pencil case","Water bottle","Charged phone"],
   subjects:{
@@ -426,19 +440,25 @@ function loadSync(){
 function saveSync(){ try{ localStorage.setItem(SKEY, JSON.stringify(S)); }catch(e){} }
 loadSync();
 
-/* import from a setup link */
+/* Import from a setup link.
+   The #fragment is deliberately LEFT in the address. iOS captures the current URL when
+   "Add to Home Screen" is used, and the Home Screen app gets its own separate storage —
+   so the fragment is what configures that copy on its first launch. Stripping it here
+   would produce an unconfigured app on the Home Screen. */
 (function importFragment(){
   const h=location.hash;
   try{
     if(h.indexOf("#s=")===0){
       const p=JSON.parse(decodeURIComponent(escape(atob(decodeURIComponent(h.slice(3))))));
-      S.key=p.k||S.key; S.url=p.u||S.url; S.role=p.r||"child"; S.last=null;
+      const changed=(p.k&&p.k!==S.key)||(p.u&&p.u!==S.url)||(p.r&&p.r!==S.role);
+      S.key=p.k||S.key; S.url=p.u||S.url; S.role=p.r||"child";
+      if(changed) S.last=null;
       saveSync();
     } else if(h.indexOf("#d=")===0){
       localStorage.setItem(KEY, decodeURIComponent(escape(atob(decodeURIComponent(h.slice(3))))));
+      history.replaceState(null,"",location.pathname+location.search);
     }
   }catch(e){}
-  if(h) history.replaceState(null,"",location.pathname+location.search);
 })();
 load();
 
@@ -840,6 +860,7 @@ $("everyAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addEvery(); })
 /* ==================================================================
    SYNC — AES-GCM encrypted blob on GitHub Pages
    ================================================================== */
+const APP_VERSION = "1.5";
 const CRY = (window.crypto && crypto.subtle) ? crypto.subtle : null;
 const b64  = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
 const ub64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
@@ -863,10 +884,26 @@ function guessUrl(){
 
 const when = iso => { try{ return new Date(iso).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}); }catch(e){ return "?"; } };
 
+function paintVersion(){
+  const e=$("verline"); if(!e) return;
+  e.textContent = "v"+APP_VERSION+(S.last ? "  ·  synced "+when(S.last) : "  ·  not synced yet");
+}
+
+/* demo flag lives in the published data, so switching it off reaches every device */
+function paintDemo(){
+  const on = D.demo !== false;
+  const bar=$("demobar"); if(bar) bar.hidden = !on;
+  const chk=$("demoChk"); if(chk) chk.checked = on;
+}
+document.addEventListener("change", e=>{
+  if(e.target && e.target.id==="demoChk"){ D.demo = e.target.checked; save(); refreshAll(); }
+});
+
 async function pull(quiet){
   const report=(long,short)=>{
     setStatus(long);
     const b=$("testStatus"); if(b) b.textContent=long;
+    paintVersion();
     if(!quiet) toast(short||long);
   };
   if(!CRY){ report("Open the app over https to sync","Needs https"); return; }
@@ -1019,7 +1056,7 @@ document.querySelectorAll("nav button").forEach(b=>{
   });
 });
 
-function refreshAll(){ tick(); paintBag(); paintWeek(); paintSetup(); paintSync(); }
+function refreshAll(){ tick(); paintBag(); paintWeek(); paintSetup(); paintSync(); paintVersion(); paintDemo(); }
 applyRole();
 refreshAll();
 pull(true);
