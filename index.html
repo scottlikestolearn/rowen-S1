@@ -89,6 +89,34 @@ nav button.on{color:var(--ink);border-top-color:var(--accent)}
 .scrub input[type=range]{flex:1;accent-color:var(--accent)}
 .scrub .t{font-family:var(--f-num);font-size:13px;color:var(--ink-soft);min-width:52px;text-align:right}
 
+.plan{
+  margin:0 18px 8px;border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:11px;
+  background:var(--card);border:1px solid var(--rule);border-left:6px solid var(--plan,#46536B);
+  cursor:pointer;
+}
+.plan .lbl{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-faint)}
+.plan .txt{font-size:15px;font-weight:750;letter-spacing:-.01em;margin-top:2px}
+.plan .sub{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.plan .chev{margin-left:auto;color:var(--ink-faint);font-size:13px;flex:none}
+.planpick{margin:0 18px 8px;display:flex;flex-wrap:wrap;gap:6px}
+.planpick button{
+  border:1px solid var(--rule);background:var(--card);border-radius:999px;
+  padding:8px 13px;font-size:12.5px;font-weight:650;color:var(--ink-soft);
+}
+.planpick button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.handover{
+  margin:0 18px 8px;border-radius:12px;padding:12px 14px;
+  background:#EDF3FF;border:1px solid #C3D6F5;color:#1A3E77;
+}
+.handover .hd{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.75}
+.handover .msg{font-size:15px;font-weight:750;margin-top:3px;line-height:1.3}
+.handover.urgent{background:#FFF0EE;border-color:#F2C9C3;color:#8A2E22}
+
+.secondbag{margin-top:26px;padding-top:20px;border-top:2px solid var(--rule)}
+.secondbag h3{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 4px}
+.secondbag p{font-size:13px;color:var(--ink-soft);margin:0 0 14px;line-height:1.4}
+
 .demobar{
   margin:0 18px 10px;background:#FFF6E0;border:1px solid #E9D398;color:#7A5A12;
   border-radius:10px;padding:9px 13px;font-size:12.5px;font-weight:700;text-align:center;line-height:1.35;
@@ -221,6 +249,19 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
 </div>
 
 <div class="demobar" id="demobar" hidden>Demo timetable — this isn't the real one yet</div>
+<div class="plan" id="plan" hidden>
+  <div>
+    <div class="lbl" id="planLbl">After school</div>
+    <div class="txt" id="planTxt">—</div>
+    <div class="sub" id="planSub"></div>
+  </div>
+  <div class="chev">change</div>
+</div>
+<div class="planpick" id="planPick" hidden></div>
+<div class="handover" id="handover" hidden>
+  <div class="hd">Handover day</div>
+  <div class="msg" id="handoverMsg"></div>
+</div>
 
 <div class="views">
 
@@ -304,6 +345,31 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
       </div>
     </div>
 
+    <h2 class="sec">Where she is — fortnightly rota</h2>
+    <div class="panel">
+      <p class="hint">Set one handover Tuesday, the one where she goes to her mum's after school. Everything else is worked out from it. Tuesdays are always Nana &amp; Papa, Thursdays are always the bus to Gran &amp; Grandpa, and Monday, Wednesday and Friday follow the rota.</p>
+      <div class="fieldrow"><label for="anchor">Handover Tue</label><input class="inp" id="anchor" type="date"></div>
+      <div class="status" id="anchorWarn"></div>
+      <div style="margin-top:14px">
+        <div class="fieldrow"><label for="lbDad">Dad</label><input class="inp" id="lbDad"></div>
+        <div class="fieldrow" style="margin-top:8px"><label for="lbBusHome">Bus home</label><input class="inp" id="lbBusHome"></div>
+        <div class="fieldrow" style="margin-top:8px"><label for="lbNana">Tuesdays</label><input class="inp" id="lbNana"></div>
+        <div class="fieldrow" style="margin-top:8px"><label for="lbGran">Thursdays</label><input class="inp" id="lbGran"></div>
+        <div class="fieldrow" style="margin-top:8px"><label for="lbDrop">Morning car</label><input class="inp" id="lbDrop"></div>
+        <div class="fieldrow" style="margin-top:8px"><label for="lbBusIn">Morning bus</label><input class="inp" id="lbBusIn"></div>
+      </div>
+    </div>
+
+    <h2 class="sec">Stays at both houses</h2>
+    <div class="panel">
+      <p class="hint">Things she has a set of at each house, so they never go in the handover bag.</p>
+      <div class="mats" id="stayMats"></div>
+      <div class="addrow">
+        <input id="stayAdd" placeholder="Add an item" enterkeyhint="done">
+        <button id="stayAddBtn">Add</button>
+      </div>
+    </div>
+
     <h2 class="sec">Sync</h2>
     <div class="panel">
       <p class="hint">The timetable is encrypted before it leaves this phone. GitHub only ever holds scrambled text. The key travels in the setup link, after the #, so it never reaches a server.</p>
@@ -381,6 +447,18 @@ const ROT_KEYS = ["geography","history","modern"];
 const DEFAULTS = {
   demo:true,
   rotation:"geography",
+  rota:{
+    anchor:"2026-08-18",
+    labels:{
+      dad:"Dad collects you",
+      bushome:"Bus home",
+      nana:"Nana & Papa collect you",
+      busgran:"Bus to Gran & Grandpa",
+      dropoff:"Dad drops you off",
+      busschool:"School bus"
+    }
+  },
+  nottravel:["PE kit","Trainers"],
   everyday:["Planner","Pencil case","Water bottle","Charged phone"],
   subjects:{
     english:  {name:"English",         code:"EN", colour:"#CE3A2E", room:"B14", mats:["English jotter","English textbook","Reading book"]},
@@ -597,6 +675,7 @@ function tick(){
   if(manual){ day=manual.day; now=manual.now; }
   else { const d=new Date(); day=dow(d); now=d.getHours()*60+d.getMinutes(); }
   paintNow(day, now);
+  paintPlan(currentDate(), now);
   $("sday").value = DAYTYPE[day] ? day : 1;
   $("smin").value=now; $("stime").textContent=nice(now);
 }
@@ -701,6 +780,44 @@ function paintBag(){
 
   $("bagSwap").textContent = bagOffset==="other" ? "Back to "+ (iso===today?"today":"the next school day") : "Pack for the day after instead";
   $("focusToggle").classList.toggle("on",focusMode);
+
+  /* second bag on handover days */
+  const sec = isHandover(date) ? secondBag(day) : [];
+  if(sec.length){
+    const wrap=document.createElement("div"); wrap.className="secondbag";
+    wrap.innerHTML=`<h3>Second bag</h3><p>Everything else, for the locker. This is a handover day, so it all needs to travel.</p>`;
+    const ul=document.createElement("ul"); ul.className="items";
+    let first=true;
+    sec.forEach(it=>{
+      const tag="2nd:"+it.name;
+      const isDone=done.includes(tag);
+      const li=document.createElement("li");
+      li.className=(isDone?"done":"")+(!isDone&&first?" next":"");
+      if(!isDone) first=false;
+      li.innerHTML=`<span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span>
+        <span class="nm">${it.name}</span>
+        <span class="for"><i style="background:${it.colour}"></i></span>`;
+      li.addEventListener("click",()=>toggle(iso,tag,!isDone));
+      ul.appendChild(li);
+    });
+    wrap.appendChild(ul);
+    body.appendChild(wrap);
+  }
+}
+
+/* everything on the timetable that isn't needed today and isn't duplicated at both houses */
+function secondBag(day){
+  const todays=new Set(bagList(day).map(i=>i.name));
+  const skip=new Set([...(D.everyday||[]), ...(D.nottravel||[])]);
+  const out=[], seen=new Set();
+  for(let d=1;d<=5;d++) for(let p=1;p<=PERIODS(d);p++){
+    const s=subjectAt(d,p); if(!s) continue;
+    s.mats.forEach(m=>{
+      if(todays.has(m)||skip.has(m)||seen.has(m)) return;
+      seen.add(m); out.push({name:m, colour:s.colour});
+    });
+  }
+  return out;
 }
 function subjectsUsing(day,mat){
   const out=[];
@@ -849,7 +966,47 @@ function paintSetup(){
     });
     em.appendChild(el);
   });
+
+  /* rota */
+  if(!D.rota) D.rota=JSON.parse(JSON.stringify(DEFAULTS.rota));
+  $("anchor").value=D.rota.anchor||"";
+  const a=new Date((D.rota.anchor||"")+"T00:00:00");
+  $("anchorWarn").textContent = isNaN(a) ? "Pick a date"
+      : (a.getDay()!==2 ? "That isn't a Tuesday — the rota needs a Tuesday to line up" : "");
+  [["lbDad","dad"],["lbBusHome","bushome"],["lbNana","nana"],["lbGran","busgran"],
+   ["lbDrop","dropoff"],["lbBusIn","busschool"]].forEach(([id,k])=>{
+    $(id).value = planLabel(k);
+  });
+
+  /* stays at both houses */
+  const sm=$("stayMats"); sm.innerHTML="";
+  (D.nottravel||[]).forEach(m=>{
+    const el=document.createElement("span"); el.className="mat";
+    el.innerHTML=`${m}<button aria-label="Remove ${m}">×</button>`;
+    el.querySelector("button").addEventListener("click",()=>{
+      D.nottravel.splice(D.nottravel.indexOf(m),1); save(); refreshAll();
+    });
+    sm.appendChild(el);
+  });
 }
+$("anchor").addEventListener("change",e=>{
+  if(!D.rota) D.rota=JSON.parse(JSON.stringify(DEFAULTS.rota));
+  D.rota.anchor=e.target.value; save(); refreshAll();
+});
+[["lbDad","dad"],["lbBusHome","bushome"],["lbNana","nana"],["lbGran","busgran"],
+ ["lbDrop","dropoff"],["lbBusIn","busschool"]].forEach(([id,k])=>{
+  $(id).addEventListener("change",()=>{
+    if(!D.rota) D.rota=JSON.parse(JSON.stringify(DEFAULTS.rota));
+    if(!D.rota.labels) D.rota.labels={};
+    D.rota.labels[k]=$(id).value.trim()||DEFAULTS.rota.labels[k];
+    save(); refreshAll();
+  });
+});
+const addStay=()=>{ const v=$("stayAdd").value.trim(); if(!v) return;
+  D.nottravel=D.nottravel||[]; if(!D.nottravel.includes(v)) D.nottravel.push(v);
+  $("stayAdd").value=""; save(); refreshAll(); };
+$("stayAddBtn").addEventListener("click",addStay);
+$("stayAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addStay(); });
 $("rot").addEventListener("change",e=>{ D.rotation=e.target.value; save(); refreshAll(); });
 const addEvery=()=>{ const v=$("everyAdd").value.trim(); if(!v) return;
   D.everyday=D.everyday||[]; if(!D.everyday.includes(v)) D.everyday.push(v);
@@ -860,7 +1017,7 @@ $("everyAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addEvery(); })
 /* ==================================================================
    SYNC — AES-GCM encrypted blob on GitHub Pages
    ================================================================== */
-const APP_VERSION = "1.5";
+const APP_VERSION = "1.6";
 const CRY = (window.crypto && crypto.subtle) ? crypto.subtle : null;
 const b64  = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
 const ub64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
@@ -883,6 +1040,117 @@ function guessUrl(){
 }
 
 const when = iso => { try{ return new Date(iso).toLocaleString("en-GB",{weekday:"short",hour:"2-digit",minute:"2-digit"}); }catch(e){ return "?"; } };
+
+/* ==================================================================
+   ROTA — fortnightly cycle from one anchor handover Tuesday
+   offset 0  = handover Tue (wakes at Dad's, goes to Mum's after school)
+   offset 1-8 = wakes at Mum's;  offset 8 = handover Wed (back to Dad's)
+   ================================================================== */
+const PLAN_COLOUR={dad:"#1E5FA8",bushome:"#2E7D4F",nana:"#6B3FA0",busgran:"#C2701A",
+                   dropoff:"#1E5FA8",busschool:"#2E7D4F"};
+const OKEY="s1.over.v1";
+let overrides={};
+try{ overrides=JSON.parse(localStorage.getItem(OKEY))||{}; }catch(e){ overrides={}; }
+function saveOver(){ try{ localStorage.setItem(OKEY,JSON.stringify(overrides)); }catch(e){} }
+
+function rota(){ return (D.rota&&D.rota.anchor) ? D.rota : DEFAULTS.rota; }
+function planLabel(k){ return (D.rota&&D.rota.labels&&D.rota.labels[k]) || DEFAULTS.rota.labels[k] || k; }
+
+function cycleOffset(date){
+  const a=new Date(rota().anchor+"T00:00:00");
+  if(isNaN(a)) return null;
+  const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());
+  return ((Math.round((d-a)/86400000)%14)+14)%14;
+}
+function isHandover(date){ const o=cycleOffset(date); return o===0||o===8; }
+function nightAt(date){ const o=cycleOffset(date); return (o!==null&&o<=7)?"mum":"dad"; }
+function wakesAt(date){ const o=cycleOffset(date); return (o!==null&&o>=1&&o<=8)?"mum":"dad"; }
+
+function afterSchool(date){
+  const iso=isoDate(date);
+  if(overrides[iso]) return overrides[iso];
+  const d=dow(date);
+  if(d===2) return "nana";
+  if(d===4) return "busgran";
+  return nightAt(date)==="mum" ? "bushome" : "dad";
+}
+function morningPlan(date){ return wakesAt(date)==="mum" ? "busschool" : "dropoff"; }
+
+function paintPlan(date, now){
+  const strip=$("plan"), pick=$("planPick"), ho=$("handover");
+  const school=!!DAYTYPE[dow(date)];
+  if(!school || cycleOffset(date)===null){
+    strip.hidden=true; pick.hidden=true; ho.hidden=true; return;
+  }
+  const beforeSchool = now < mins("08:50");
+  const key = beforeSchool ? morningPlan(date) : afterSchool(date);
+
+  strip.hidden=false;
+  strip.style.setProperty("--plan", PLAN_COLOUR[key]||"#46536B");
+  $("planLbl").textContent = beforeSchool ? "Getting to school" : "After school";
+  $("planTxt").textContent = planLabel(key);
+  $("planSub").textContent =
+      key==="busschool" ? "Bus comes between 8.27 and 8.37"
+    : overrides[isoDate(date)] ? "Changed just for today"
+    : "";
+
+  /* handover prompts */
+  const hand=isHandover(date);
+  const blocks=blocksFor(dow(date));
+  const lastStart = blocks.length ? blocks[blocks.length-1].start : 0;
+  const close = blocks.length ? blocks[blocks.length-1].end : 0;
+  ho.classList.remove("urgent");
+  if(hand){
+    ho.hidden=false;
+    if(now < mins("08:50")){
+      $("handoverMsg").textContent="Put your second bag in your locker when you get in";
+    } else if(now >= lastStart && now < close+30){
+      ho.classList.add("urgent");
+      $("handoverMsg").textContent="Collect your second bag from your locker before you leave";
+    } else if(now >= close+30){
+      $("handoverMsg").textContent="Hope you remembered the second bag from your locker";
+    } else {
+      $("handoverMsg").textContent="Your second bag is in your locker — collect it at the end of the day";
+    }
+  } else {
+    /* evening before a handover */
+    let t=addDays(date,1); let guard=0;
+    while(!DAYTYPE[dow(t)] && guard++<7) t=addDays(t,1);
+    if(isHandover(t) && now >= mins("15:00")){
+      ho.hidden=false;
+      $("handoverMsg").textContent="Handover tomorrow — pack your second bag with everything else tonight";
+    } else ho.hidden=true;
+  }
+}
+
+$("plan").addEventListener("click",()=>{
+  const pick=$("planPick");
+  if(!pick.hidden){ pick.hidden=true; return; }
+  const date=currentDate();
+  pick.innerHTML="";
+  ["dad","bushome","nana","busgran"].forEach(k=>{
+    const b=document.createElement("button");
+    b.textContent=planLabel(k);
+    if(afterSchool(date)===k) b.classList.add("on");
+    b.addEventListener("click",()=>{
+      overrides[isoDate(date)]=k; saveOver(); pick.hidden=true; refreshAll();
+    });
+    pick.appendChild(b);
+  });
+  const r=document.createElement("button");
+  r.textContent="Back to normal";
+  r.addEventListener("click",()=>{
+    delete overrides[isoDate(date)]; saveOver(); pick.hidden=true; refreshAll();
+  });
+  pick.appendChild(r);
+  pick.hidden=false;
+});
+
+function currentDate(){
+  if(!manual) return new Date();
+  const d=new Date(); const shift=manual.day-dow(d);
+  return addDays(d,shift);
+}
 
 function paintVersion(){
   const e=$("verline"); if(!e) return;
