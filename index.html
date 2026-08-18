@@ -89,6 +89,21 @@ nav button.on{color:var(--ink);border-top-color:var(--accent)}
 .scrub input[type=range]{flex:1;accent-color:var(--accent)}
 .scrub .t{font-family:var(--f-num);font-size:13px;color:var(--ink-soft);min-width:52px;text-align:right}
 
+.swatches{display:flex;flex-wrap:wrap;gap:7px;margin:11px 0 4px}
+.swatches button{
+  width:32px;height:32px;border-radius:50%;border:2px solid transparent;padding:0;
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.12);
+}
+.swatches button.on{border-color:var(--ink);transform:scale(1.08)}
+.swatches .custom{
+  width:32px;height:32px;border-radius:50%;border:1px dashed var(--ink-faint);
+  background:var(--card);padding:0;overflow:hidden;position:relative;
+}
+.swatches .custom input{
+  position:absolute;inset:-6px;width:150%;height:150%;border:none;padding:0;background:none;
+}
+.swatchlbl{font-size:11px;font-weight:750;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint);margin-top:12px}
+
 .plan{
   margin:0 18px 8px;border-radius:12px;padding:11px 14px;display:flex;align-items:center;gap:11px;
   background:var(--card);border:1px solid var(--rule);border-left:6px solid var(--plan,#46536B);
@@ -104,6 +119,15 @@ nav button.on{color:var(--ink);border-top-color:var(--accent)}
   padding:8px 13px;font-size:12.5px;font-weight:650;color:var(--ink-soft);
 }
 .planpick button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.midday{
+  margin:0 18px 8px;border-radius:12px;padding:12px 14px;
+  background:#EAF6F0;border:1px solid #B8DECB;color:#1D5C40;
+}
+.midday .hd{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.75}
+.midday .msg{font-size:15px;font-weight:750;margin-top:3px;line-height:1.3}
+.midday .done{margin-top:9px;background:#1D5C40;color:#fff;border:none;border-radius:9px;padding:9px 15px;font-size:13px;font-weight:700}
+.midday.ticked{opacity:.5}
 
 .handover{
   margin:0 18px 8px;border-radius:12px;padding:12px 14px;
@@ -258,6 +282,11 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
   <div class="chev">change</div>
 </div>
 <div class="planpick" id="planPick" hidden></div>
+<div class="midday" id="midday" hidden>
+  <div class="hd" id="middayHd">Lunchtime</div>
+  <div class="msg" id="middayMsg"></div>
+  <button class="done" id="middayDone">Done</button>
+</div>
 <div class="handover" id="handover" hidden>
   <div class="hd">Handover day</div>
   <div class="msg" id="handoverMsg"></div>
@@ -360,6 +389,15 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
       </div>
     </div>
 
+    <h2 class="sec">Lunchtime reminder</h2>
+    <div class="panel">
+      <p class="hint">Shows on the Now screen just before lunch and stays until lunch ends. Lunch is 1.15pm on Mon, Tue and Thu, and 12.25pm on Wed and Fri — it follows whichever applies. Keep the wording low-key; she may have it on screen with friends nearby.</p>
+      <label class="checkrow"><input type="checkbox" id="mdOn"> Show a lunchtime reminder</label>
+      <div class="fieldrow"><label for="mdLabel">Heading</label><input class="inp" id="mdLabel"></div>
+      <div class="fieldrow" style="margin-top:8px"><label for="mdText">Says</label><input class="inp" id="mdText"></div>
+      <div class="fieldrow" style="margin-top:8px"><label for="mdLead">Minutes early</label><input class="inp" id="mdLead" type="number" min="0" max="30" step="1"></div>
+    </div>
+
     <h2 class="sec">Stays at both houses</h2>
     <div class="panel">
       <p class="hint">Things she has a set of at each house, so they never go in the handover bag.</p>
@@ -459,6 +497,7 @@ const DEFAULTS = {
     }
   },
   nottravel:["PE kit","Trainers"],
+  midday:{ on:false, label:"Lunchtime", text:"Pop to the office before you eat", lead:5 },
   everyday:["Planner","Pencil case","Water bottle","Charged phone"],
   subjects:{
     english:  {name:"English",         code:"EN", colour:"#CE3A2E", room:"B14", mats:["English jotter","English textbook","Reading book"]},
@@ -676,6 +715,7 @@ function tick(){
   else { const d=new Date(); day=dow(d); now=d.getHours()*60+d.getMinutes(); }
   paintNow(day, now);
   paintPlan(currentDate(), now);
+  paintMidday(currentDate(), now);
   $("sday").value = DAYTYPE[day] ? day : 1;
   $("smin").value=now; $("stime").textContent=nice(now);
 }
@@ -932,12 +972,36 @@ function paintSetup(){
       <div class="subjbody">
         <div class="fieldrow" style="margin-top:10px"><label>Called</label><input class="inp nmI" value="${s.name.replace(/"/g,"&quot;")}"></div>
         <div class="fieldrow" style="margin-top:8px"><label>Room</label><input class="inp rmI" value="${s.room.replace(/"/g,"&quot;")}"></div>
+        <div class="swatchlbl">Sticker colour</div>
+        <div class="swatches"></div>
         <div class="mats"></div>
         <div class="addrow"><input placeholder="Add a jotter, book or kit item" enterkeyhint="done"><button>Add</button></div>
       </div>`;
     const nmI=det.querySelector(".nmI"), rmI=det.querySelector(".rmI");
     nmI.addEventListener("change",()=>{ s.name=nmI.value.trim()||s.name; save(); refreshAll(); });
     rmI.addEventListener("change",()=>{ s.room=rmI.value.trim(); save(); refreshAll(); });
+
+    const sw=det.querySelector(".swatches");
+    const setColour=c=>{
+      s.colour=c; save();
+      const open=det.open;
+      refreshAll();
+      /* keep this subject expanded after the redraw */
+      if(open){ const again=$("subjList").querySelectorAll("details.subj")[Object.keys(D.subjects).indexOf(k)];
+                if(again) again.open=true; }
+    };
+    STICKERS.forEach(c=>{
+      const b=document.createElement("button");
+      b.style.background=c;
+      b.setAttribute("aria-label","Set colour "+c);
+      if(c.toLowerCase()===String(s.colour).toLowerCase()) b.classList.add("on");
+      b.addEventListener("click",()=>setColour(c));
+      sw.appendChild(b);
+    });
+    const wrap=document.createElement("span"); wrap.className="custom";
+    const ci=document.createElement("input"); ci.type="color"; ci.value=s.colour;
+    ci.addEventListener("change",()=>setColour(ci.value));
+    wrap.appendChild(ci); sw.appendChild(wrap);
 
     const mw=det.querySelector(".mats");
     (s.mats||[]).forEach(m=>{
@@ -978,6 +1042,13 @@ function paintSetup(){
     $(id).value = planLabel(k);
   });
 
+  /* midday reminder */
+  if(!D.midday) D.midday=JSON.parse(JSON.stringify(DEFAULTS.midday));
+  $("mdOn").checked = !!D.midday.on;
+  $("mdLabel").value = D.midday.label||"";
+  $("mdText").value  = D.midday.text||"";
+  $("mdLead").value  = (typeof D.midday.lead==="number") ? D.midday.lead : 5;
+
   /* stays at both houses */
   const sm=$("stayMats"); sm.innerHTML="";
   (D.nottravel||[]).forEach(m=>{
@@ -1002,8 +1073,23 @@ $("anchor").addEventListener("change",e=>{
     save(); refreshAll();
   });
 });
-const addStay=()=>{ const v=$("stayAdd").value.trim(); if(!v) return;
-  D.nottravel=D.nottravel||[]; if(!D.nottravel.includes(v)) D.nottravel.push(v);
+[["mdLabel","label"],["mdText","text"]].forEach(([id,k])=>{
+  $(id).addEventListener("change",()=>{
+    if(!D.midday) D.midday=JSON.parse(JSON.stringify(DEFAULTS.midday));
+    D.midday[k]=$(id).value.trim()||DEFAULTS.midday[k]; save(); refreshAll();
+  });
+});
+$("mdOn").addEventListener("change",()=>{
+  if(!D.midday) D.midday=JSON.parse(JSON.stringify(DEFAULTS.midday));
+  D.midday.on=$("mdOn").checked; save(); refreshAll();
+});
+$("mdLead").addEventListener("change",()=>{
+  if(!D.midday) D.midday=JSON.parse(JSON.stringify(DEFAULTS.midday));
+  const v=parseInt($("mdLead").value,10);
+  D.midday.lead=isNaN(v)?5:Math.max(0,Math.min(30,v)); save(); refreshAll();
+});
+
+const addStay=()=>{ const v=$("stayAdd").value.trim(); if(!v) return;  D.nottravel=D.nottravel||[]; if(!D.nottravel.includes(v)) D.nottravel.push(v);
   $("stayAdd").value=""; save(); refreshAll(); };
 $("stayAddBtn").addEventListener("click",addStay);
 $("stayAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addStay(); });
@@ -1017,7 +1103,12 @@ $("everyAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addEvery(); })
 /* ==================================================================
    SYNC — AES-GCM encrypted blob on GitHub Pages
    ================================================================== */
-const APP_VERSION = "1.6";
+const APP_VERSION = "1.8";
+
+/* Common coloured-sticker-dot shades. Custom picker sits alongside for exact matching. */
+const STICKERS = ["#CE3A2E","#E8532B","#E88C1A","#E0B70E","#F2E14C",
+                  "#7BB742","#2E7D4F","#128089","#1E5FA8","#4B57C4",
+                  "#6B3FA0","#B5297F","#E87BA8","#8A5A2B","#7A736B","#23262F"];
 const CRY = (window.crypto && crypto.subtle) ? crypto.subtle : null;
 const b64  = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
 const ub64 = s => Uint8Array.from(atob(s), c=>c.charCodeAt(0));
@@ -1075,6 +1166,37 @@ function afterSchool(date){
   return nightAt(date)==="mum" ? "bushome" : "dad";
 }
 function morningPlan(date){ return wakesAt(date)==="mum" ? "busschool" : "dropoff"; }
+
+function paintMidday(date, now){
+  const el=$("midday");
+  const m=D.midday||{};
+  const school=!!DAYTYPE[dow(date)];
+  if(!el) return;
+  if(!m.on || !school){ el.hidden=true; return; }
+
+  /* find the lunch block for this day — times differ Mon/Tue/Thu vs Wed/Fri */
+  const lunch=blocksFor(dow(date)).find(b=>b.kind==="B" && b.breakName==="Lunch");
+  if(!lunch){ el.hidden=true; return; }
+
+  const lead = typeof m.lead==="number" ? m.lead : 5;
+  const from = lunch.start - lead;
+  const to   = lunch.end;
+  if(now < from || now >= to){ el.hidden=true; return; }
+
+  const iso=isoDate(date), tag="midday";
+  const ticked=(ticks[iso]||[]).includes(tag);
+  el.hidden=false;
+  el.classList.toggle("ticked", ticked);
+  $("middayHd").textContent = m.label || "Lunchtime";
+  $("middayMsg").textContent = ticked ? "Sorted" : (m.text || "Pop to the office before you eat");
+  $("middayDone").textContent = ticked ? "Undo" : "Done";
+  $("middayDone").onclick = ()=>{
+    const arr=ticks[iso]||[];
+    const i=arr.indexOf(tag);
+    if(i>-1) arr.splice(i,1); else arr.push(tag);
+    ticks[iso]=arr; saveTicks(); refreshAll();
+  };
+}
 
 function paintPlan(date, now){
   const strip=$("plan"), pick=$("planPick"), ho=$("handover");
