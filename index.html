@@ -19,6 +19,7 @@
   --f-num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{height:100%}
 body{
   margin:0;background:var(--paper);color:var(--ink);font-family:var(--f-ui);
@@ -61,6 +62,14 @@ nav button.on{color:var(--ink);border-top-color:var(--accent)}
 .card::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--accent)}
 .kicker{font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
 .subject{font-size:clamp(36px,9.5vw,58px);font-weight:800;letter-spacing:-.035em;line-height:.94;margin:14px 0 0}
+.cardnote{
+  margin-top:16px;padding:12px 13px;border-radius:11px;
+  background:#EAF6F0;border:1px solid #B8DECB;color:#1D5C40;
+}
+.cardnote .hd{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.7}
+.cardnote .msg{font-size:15px;font-weight:750;margin-top:3px;line-height:1.3}
+.cardnote button{margin-top:10px;background:#1D5C40;color:#fff;border:none;border-radius:9px;padding:9px 16px;font-size:13px;font-weight:700}
+.cardnote.ticked{opacity:.55}
 .teacher{margin-top:10px;font-size:clamp(15px,3.8vw,18px);font-weight:650;color:var(--ink-soft);letter-spacing:-.01em}
 .roomline{margin-top:16px;display:flex;align-items:baseline;gap:9px}
 .roomline .lbl{font-size:11px;font-weight:750;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
@@ -121,14 +130,17 @@ nav button.on{color:var(--ink);border-top-color:var(--accent)}
 }
 .planpick button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
 
-.midday{
-  margin:0 18px 8px;border-radius:12px;padding:12px 14px;
+.cardnote{
+  margin-top:18px;border-radius:11px;padding:11px 12px;
   background:#EAF6F0;border:1px solid #B8DECB;color:#1D5C40;
+  display:flex;align-items:center;gap:10px;
 }
-.midday .hd{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.75}
-.midday .msg{font-size:15px;font-weight:750;margin-top:3px;line-height:1.3}
-.midday .done{margin-top:9px;background:#1D5C40;color:#fff;border:none;border-radius:9px;padding:9px 15px;font-size:13px;font-weight:700}
-.midday.ticked{opacity:.5}
+.cardnote .msg{font-size:14.5px;font-weight:750;line-height:1.3;flex:1;min-width:0}
+.cardnote button{
+  flex:none;background:#1D5C40;color:#fff;border:none;border-radius:9px;
+  padding:9px 13px;font-size:13px;font-weight:700;
+}
+.cardnote.ticked{opacity:.55}
 
 .handover{
   margin:0 18px 8px;border-radius:12px;padding:12px 14px;
@@ -304,11 +316,6 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
   <div class="chev">change</div>
 </div>
 <div class="planpick" id="planPick" hidden></div>
-<div class="midday" id="midday" hidden>
-  <div class="hd" id="middayHd">Lunchtime</div>
-  <div class="msg" id="middayMsg"></div>
-  <button class="done" id="middayDone">Done</button>
-</div>
 <div class="handover" id="handover" hidden>
   <div class="hd">Handover day</div>
   <div class="msg" id="handoverMsg"></div>
@@ -327,6 +334,10 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
         <div class="left" id="leftWrap" hidden>
           <div class="num" id="leftNum"></div>
           <div class="bar"><i id="leftBar"></i></div>
+        </div>
+        <div class="cardnote" id="cardnote" hidden>
+          <div class="msg" id="middayMsg"></div>
+          <button id="middayDone">Done</button>
         </div>
         <div class="meta" id="meta"></div>
       </div>
@@ -421,6 +432,18 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
       <p class="hint">A link at the bottom of the Now screen. Leave the address blank to hide it.</p>
       <div class="fieldrow"><label for="siteUrl">Address</label><input class="inp" id="siteUrl" type="url" autocapitalize="off" autocorrect="off" placeholder="https://..."></div>
       <div class="fieldrow" style="margin-top:8px"><label for="siteLbl">Shows as</label><input class="inp" id="siteLbl"></div>
+    </div>
+
+    <h2 class="sec">Social Subjects placeholder</h2>
+    <div class="panel">
+      <p class="hint">The colour used while you don't yet know which social subject she's doing. Each individual subject keeps its own colour once you pick one in the rotation setting above.</p>
+      <div class="swatches" id="socialSw"></div>
+    </div>
+
+    <h2 class="sec">Locker</h2>
+    <div class="panel">
+      <p class="hint">Turn this off until she actually has a locker. It hides the handover reminders about putting the second bag in and collecting it again — the second-bag packing list still shows.</p>
+      <label class="checkrow"><input type="checkbox" id="lockerOn"> She has a locker</label>
     </div>
 
     <h2 class="sec">Lunchtime reminder</h2>
@@ -534,6 +557,7 @@ const DEFAULTS = {
   nottravel:["PE kit","Trainers"],
   midday:{ on:false, label:"Lunchtime", text:"Pop to the office before you eat", lead:5 },
   site:{ url:"https://www.oraetlabora.co.uk", label:"School website" },
+  locker:true,
   everyday:["Planner","Pencil case","Water bottle","Charged phone"],
   subjects:{
     english:  {name:"English",         code:"EN", colour:"#CE3A2E", room:"B14", mats:["English jotter","English textbook","Reading book"]},
@@ -544,7 +568,7 @@ const DEFAULTS = {
     geography:{name:"Geography",       code:"GE", colour:"#8A5A2B", room:"D12", mats:["Geography jotter"]},
     history:  {name:"History",         code:"HI", colour:"#6B4B2A", room:"D14", mats:["History jotter"]},
     modern:   {name:"Modern Studies",  code:"MS", colour:"#B2743C", room:"D15", mats:["Modern Studies jotter"]},
-    ict:      {name:"ICT",             code:"IT", colour:"#128089", room:"T04", mats:["ICT jotter"]},
+    ict:      {name:"Business",        code:"BU", colour:"#128089", room:"T04", mats:["Business jotter"]},
     technical:{name:"Technical",       code:"TE", colour:"#46536B", room:"T11", mats:["Technical jotter"]},
     homeec:   {name:"Home Economics",  code:"HE", colour:"#6B3FA0", room:"T07", mats:["Apron","Tupperware tub","Home Ec folder"]},
     art:      {name:"Art & Design",    code:"AR", colour:"#B5297F", room:"A02", mats:["Sketchbook","Pencils"]},
@@ -652,7 +676,8 @@ function resolve(key, over){
   /* Social Studies slot with no subject chosen yet */
   if(!s){
     if(!rotating) return null;
-    return {key:"social", slot:"social", name:"Social Subjects", code:"SS", colour:"#8A5A2B",
+    return {key:"social", slot:"social", name:"Social Subjects", code:"SS",
+            colour:(D.socialColour||"#23262F"),
             room:over.room||"", mats:[], teacher:over.teacher||"", rotating:true, undecided:true};
   }
   return {key:k, slot:key, name:s.name, code:s.code, colour:s.colour,
@@ -693,7 +718,7 @@ function paintNow(day, now){
     kicker="No school today"; subject="Weekend";
     if(first && first.subject){
       accent=first.subject.colour;
-      meta=`Back on <b>${DAYNAME[nd]}</b>. First up is <b>${first.subject.name}</b>, room ${first.subject.room}, at ${nice(first.start)}.`;
+      meta=`Back on <b>${DAYNAME[nd]}</b>. First up is <b>${first.subject.name}</b> at ${nice(first.start)}.`;
     }
   } else {
     const open=blocks[0].start, close=blocks[blocks.length-1].end;
@@ -712,7 +737,7 @@ function paintNow(day, now){
       kicker="Home time"; subject="Day done";
       if(f && f.subject){
         accent=f.subject.colour;
-        meta=`Back on <b>${DAYNAME[nd]}</b>. First up is <b>${f.subject.name}</b>, room ${f.subject.room}, at ${nice(f.start)}.`;
+        meta=`Back on <b>${DAYNAME[nd]}</b>. First up is <b>${f.subject.name}</b> at ${nice(f.start)}.`;
       }
 
     } else if(cur.kind==="P" && now-cur.start<=HAND_AFTER){
@@ -733,7 +758,7 @@ function paintNow(day, now){
 
     } else if(cur.kind==="B"){
       kicker=cur.breakName; subject=cur.breakName;
-      if(nxt&&nxt.subject) meta=`After it: <b>${nxt.subject.name}</b>, room ${nxt.subject.room}, at ${nice(nxt.start)}.`;
+      if(nxt&&nxt.subject) meta=`After it: <b>${nxt.subject.name}</b> at ${nice(nxt.start)}.`;
       left={done:now-cur.start,total:cur.end-cur.start,text:`${cur.end-now} min left`};
 
     } else {
@@ -1095,6 +1120,7 @@ function paintSetup(){
         <div class="fieldrow" style="margin-top:10px"><label>Called</label><input class="inp nmI" value="${s.name.replace(/"/g,"&quot;")}"></div>
         <div class="fieldrow" style="margin-top:8px"><label>Room</label><input class="inp rmI" value="${s.room.replace(/"/g,"&quot;")}"></div>
         <div class="fieldrow" style="margin-top:8px"><label>Teacher</label><input class="inp tcI" value="${(s.teacher||'').replace(/"/g,"&quot;")}" placeholder="e.g. Mrs Baird"></div>
+        <div class="fieldrow" style="margin-top:8px"><label>Short code</label><input class="inp cdI" maxlength="2" value="${(s.code||'').replace(/"/g,"&quot;")}" placeholder="2 letters" autocapitalize="characters"></div>
         <div class="swatchlbl">Sticker colour</div>
         <div class="swatches"></div>
         <div class="mats"></div>
@@ -1105,6 +1131,12 @@ function paintSetup(){
     rmI.addEventListener("change",()=>{ s.room=rmI.value.trim(); save(); refreshAll(); });
     const tcI=det.querySelector(".tcI");
     tcI.addEventListener("change",()=>{ s.teacher=tcI.value.trim(); save(); refreshAll(); });
+    const cdI=det.querySelector(".cdI");
+    cdI.addEventListener("change",()=>{
+      const v=cdI.value.trim().toUpperCase().slice(0,2);
+      if(v) s.code=v;
+      save(); refreshAll();
+    });
 
     const sw=det.querySelector(".swatches");
     const setColour=c=>{
@@ -1172,6 +1204,17 @@ function paintSetup(){
   $("siteUrl").value=D.site.url||"";
   $("siteLbl").value=D.site.label||"";
 
+  const ssw=$("socialSw"); ssw.innerHTML="";
+  STICKERS.forEach(c=>{
+    const b=document.createElement("button");
+    b.style.background=c; b.setAttribute("aria-label","Set colour "+c);
+    if(c.toLowerCase()===String(D.socialColour||"#23262F").toLowerCase()) b.classList.add("on");
+    b.addEventListener("click",()=>{ D.socialColour=c; save(); refreshAll(); });
+    ssw.appendChild(b);
+  });
+
+  $("lockerOn").checked = D.locker!==false;
+
   /* midday reminder */
   if(!D.midday) D.midday=JSON.parse(JSON.stringify(DEFAULTS.midday));
   $("mdOn").checked = !!D.midday.on;
@@ -1218,6 +1261,9 @@ $("anchor").addEventListener("change",e=>{
     D.midday[k]=$(id).value.trim()||DEFAULTS.midday[k]; save(); refreshAll();
   });
 });
+$("lockerOn").addEventListener("change",()=>{
+  D.locker=$("lockerOn").checked; save(); refreshAll();
+});
 $("mdOn").addEventListener("change",()=>{
   if(!D.midday) D.midday=JSON.parse(JSON.stringify(DEFAULTS.midday));
   D.midday.on=$("mdOn").checked; save(); refreshAll();
@@ -1242,7 +1288,7 @@ $("everyAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addEvery(); })
 /* ==================================================================
    SYNC — AES-GCM encrypted blob on GitHub Pages
    ================================================================== */
-const APP_VERSION = "2.1";
+const APP_VERSION = "2.2";
 
 /* Common coloured-sticker-dot shades. Custom picker sits alongside for exact matching. */
 const STICKERS = ["#CE3A2E","#E8532B","#E88C1A","#E0B70E","#F2E14C",
@@ -1307,7 +1353,7 @@ function afterSchool(date){
 function morningPlan(date){ return wakesAt(date)==="mum" ? "busschool" : "dropoff"; }
 
 function paintMidday(date, now){
-  const el=$("midday");
+  const el=$("cardnote");
   const m=D.midday||{};
   const school=!!DAYTYPE[dow(date)];
   if(!el) return;
@@ -1326,7 +1372,6 @@ function paintMidday(date, now){
   const ticked=(ticks[iso]||[]).includes(tag);
   el.hidden=false;
   el.classList.toggle("ticked", ticked);
-  $("middayHd").textContent = m.label || "Lunchtime";
   $("middayMsg").textContent = ticked ? "Sorted" : (m.text || "Pop to the office before you eat");
   $("middayDone").textContent = ticked ? "Undo" : "Done";
   $("middayDone").onclick = ()=>{
@@ -1356,7 +1401,7 @@ function paintPlan(date, now){
     : "";
 
   /* handover prompts */
-  const hand=isHandover(date);
+  const hand=isHandover(date) && (D.locker!==false);
   const blocks=blocksFor(dow(date));
   const lastStart = blocks.length ? blocks[blocks.length-1].start : 0;
   const close = blocks.length ? blocks[blocks.length-1].end : 0;
@@ -1377,7 +1422,7 @@ function paintPlan(date, now){
     /* evening before a handover */
     let t=addDays(date,1); let guard=0;
     while(!DAYTYPE[dow(t)] && guard++<7) t=addDays(t,1);
-    if(isHandover(t) && now >= mins("15:00")){
+    if(isHandover(t) && (D.locker!==false) && now >= mins("15:00")){
       ho.hidden=false;
       $("handoverMsg").textContent="Handover tomorrow — pack your second bag with everything else tonight";
     } else ho.hidden=true;
