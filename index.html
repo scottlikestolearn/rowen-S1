@@ -239,9 +239,23 @@ select.inp,input.inp{
 .ttday{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap}
 .ttday button{border:1px solid var(--rule);background:var(--card);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:650;color:var(--ink-soft)}
 .ttday button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-.ttrow{display:flex;align-items:center;gap:10px;padding:6px 0}
+.ttrow{padding:0}
 .ttrow + .ttrow{border-top:1px solid var(--rule-soft)}
-.ttrow .p{font-family:var(--f-num);font-size:11px;color:var(--ink-faint);width:74px;flex:none}
+.ttrow summary{display:flex;align-items:center;gap:10px;padding:11px 0;list-style:none;cursor:pointer}
+.ttrow summary::-webkit-details-marker{display:none}
+.ttrow .p{font-family:var(--f-num);font-size:11px;color:var(--ink-faint);width:64px;flex:none}
+.ttrow .dot{width:11px;height:11px;border-radius:50%;flex:none;background:var(--rule)}
+.ttrow .who{flex:1;min-width:0}
+.ttrow .who .s{font-size:14px;font-weight:700;letter-spacing:-.01em}
+.ttrow .who .d{font-size:11.5px;color:var(--ink-faint);margin-top:1px}
+.ttrow .who .s.unset{color:var(--ink-faint);font-weight:600}
+.ttrow .edit{font-size:11px;font-weight:750;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);flex:none}
+.ttbody{padding:2px 0 14px}
+.ttbody .fieldrow{margin-top:8px}
+.ttbody .fieldrow label{width:74px}
+.inherit{font-size:11.5px;color:var(--ink-faint);margin:9px 0 0;line-height:1.4}
+.copyrow{display:flex;gap:6px;margin-top:11px;flex-wrap:wrap}
+.copyrow button{border:1px solid var(--rule);background:var(--paper);border-radius:9px;padding:7px 11px;font-size:12px;font-weight:650;color:var(--ink-soft)}
 
 details.subj{background:var(--card);border:1px solid var(--rule);border-radius:13px;margin-bottom:7px;overflow:hidden}
 details.subj summary{padding:13px 15px;font-size:15px;font-weight:650;display:flex;align-items:center;gap:10px;list-style:none}
@@ -497,7 +511,8 @@ const DAYTYPE = {1:"A",2:"A",3:"B",4:"A",5:"B"};
 const DAYNAME = {1:"Monday",2:"Tuesday",3:"Wednesday",4:"Thursday",5:"Friday",6:"Saturday",7:"Sunday"};
 const SHORT   = {1:"Mon",2:"Tue",3:"Wed",4:"Thu",5:"Fri"};
 const PERIODS = d => DAYTYPE[d]==="A" ? 7 : 6;
-const ROT_KEYS = ["geography","history","modern"];
+const ROT_KEYS = ["","geography","history","modern"];
+const ROT_NAMES = {"":"Not decided yet"};
 
 /* ==================================================================
    DEFAULTS — provisional until the official timetable arrives
@@ -611,15 +626,43 @@ const addDays=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
 const isoDate=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const dow = d => d.getDay()===0 ? 7 : d.getDay();
 
-function resolve(key){
-  if(!key) return null;
-  const k = key==="social" ? D.rotation : key;
-  const s = D.subjects[k];
-  if(!s) return null;
-  return {key:k, slot:key, name:s.name, code:s.code, colour:s.colour, room:s.room, mats:s.mats||[],
-          teacher:s.teacher||"", rotating: key==="social"};
+/* A period entry is either "maths" or {k:"maths", room:"C12", teacher:"Mrs Baird"}.
+   Per-period room/teacher win; anything blank falls back to the subject default. */
+function entryAt(day, period){
+  const e=(D.timetable[day]||[])[period-1];
+  if(!e) return null;
+  return (typeof e==="string") ? {k:e} : e;
 }
-function subjectAt(day, period){ return resolve((D.timetable[day]||[])[period-1]); }
+function setEntry(day, period, patch){
+  if(!D.timetable[day]) D.timetable[day]=[];
+  const cur=entryAt(day,period)||{};
+  const next=Object.assign({}, cur, patch);
+  if(!next.k){ D.timetable[day][period-1]=""; return; }
+  if(!next.room) delete next.room;
+  if(!next.teacher) delete next.teacher;
+  D.timetable[day][period-1] = (next.room||next.teacher) ? next : next.k;
+}
+
+function resolve(key, over){
+  if(!key) return null;
+  const rotating = key==="social";
+  const k = rotating ? (D.rotation||"") : key;
+  const s = D.subjects[k];
+  over = over||{};
+  /* Social Studies slot with no subject chosen yet */
+  if(!s){
+    if(!rotating) return null;
+    return {key:"social", slot:"social", name:"Social Subjects", code:"SS", colour:"#8A5A2B",
+            room:over.room||"", mats:[], teacher:over.teacher||"", rotating:true, undecided:true};
+  }
+  return {key:k, slot:key, name:s.name, code:s.code, colour:s.colour,
+          room: over.room || s.room, mats:s.mats||[],
+          teacher: over.teacher || s.teacher || "", rotating};
+}
+function subjectAt(day, period){
+  const e=entryAt(day,period);
+  return e ? resolve(e.k, e) : null;
+}
 
 function blocksFor(day){
   const shape = SHAPE[DAYTYPE[day]];
@@ -948,13 +991,14 @@ function paintWeek(){
 /* ==================================================================
    SETUP
    ================================================================== */
-let ttDay=1;
+let ttDay=1, ttOpen=null;
 
 function paintSetup(){
   const rot=$("rot"); rot.innerHTML="";
   ROT_KEYS.forEach(k=>{
-    const o=document.createElement("option"); o.value=k; o.textContent=D.subjects[k].name;
-    if(D.rotation===k) o.selected=true; rot.appendChild(o);
+    const o=document.createElement("option"); o.value=k;
+    o.textContent = k ? (D.subjects[k] ? D.subjects[k].name : k) : ROT_NAMES[""];
+    if((D.rotation||"")===k) o.selected=true; rot.appendChild(o);
   });
 
   const days=$("ttDays"); days.innerHTML="";
@@ -970,20 +1014,76 @@ function paintSetup(){
   const blks=blocksFor(ttDay);
   for(let p=1;p<=PERIODS(ttDay);p++){
     const blk=blks.find(x=>x.period===p);
-    const row=document.createElement("div"); row.className="ttrow";
-    row.innerHTML=`<span class="p">P${p} · ${nice(blk.start)}</span>`;
-    const sel=document.createElement("select"); sel.className="inp";
-    sel.innerHTML=`<option value="">— not set —</option><option value="social">Social Studies (rotating)</option>`;
+    const e=entryAt(ttDay,p)||{};
+    const r=subjectAt(ttDay,p);
+    const openIt = ttOpen===ttDay+":"+p;
+
+    const row=document.createElement("details"); row.className="ttrow"; row.open=openIt;
+    const detail = r ? [r.teacher, r.room?("Room "+r.room):""].filter(Boolean).join(" · ") : "";
+    row.innerHTML=`<summary>
+        <span class="p">P${p} · ${nice(blk.start)}</span>
+        <span class="dot" style="background:${r?r.colour:"var(--rule)"}"></span>
+        <span class="who">
+          <span class="s${r?"":" unset"}">${r?r.name:"Not set"}</span>
+          ${detail?`<span class="d">${detail}</span>`:""}
+        </span>
+        <span class="edit">${openIt?"close":"edit"}</span>
+      </summary>
+      <div class="ttbody">
+        <div class="fieldrow"><label>Subject</label><select class="inp subj"></select></div>
+        <div class="fieldrow"><label>Teacher</label><input class="inp tch" placeholder="" value="${(e.teacher||"").replace(/"/g,"&quot;")}"></div>
+        <div class="fieldrow"><label>Room</label><input class="inp rm" placeholder="" value="${(e.room||"").replace(/"/g,"&quot;")}"></div>
+        <p class="inherit"></p>
+        <div class="copyrow"></div>
+      </div>`;
+
+    row.addEventListener("toggle",()=>{ ttOpen = row.open ? ttDay+":"+p : null;
+      row.querySelector(".edit").textContent = row.open ? "close" : "edit"; });
+
+    const sel=row.querySelector(".subj");
+    sel.innerHTML=`<option value="">— not set —</option><option value="social">Social Subjects (rotating)</option>`;
     Object.keys(D.subjects).forEach(k=>{
+      if(k==="geography"||k==="history"||k==="modern") return;   /* reached via the rotating slot */
       const o=document.createElement("option"); o.value=k; o.textContent=D.subjects[k].name;
       sel.appendChild(o);
     });
-    sel.value=(D.timetable[ttDay]||[])[p-1]||"";
-    sel.addEventListener("change",()=>{
-      if(!D.timetable[ttDay]) D.timetable[ttDay]=[];
-      D.timetable[ttDay][p-1]=sel.value; save(); refreshAll();
+    /* still allow picking a specific social subject directly */
+    ["geography","history","modern"].forEach(k=>{
+      if(!D.subjects[k]) return;
+      const o=document.createElement("option"); o.value=k; o.textContent=D.subjects[k].name+" (fixed)";
+      sel.appendChild(o);
     });
-    row.appendChild(sel); rows.appendChild(row);
+    sel.value=e.k||"";
+
+    const tch=row.querySelector(".tch"), rm=row.querySelector(".rm");
+    const base = e.k ? resolve(e.k, {}) : null;
+    if(base){
+      tch.placeholder = base.teacher || "same as subject";
+      rm.placeholder  = base.room    || "same as subject";
+    }
+    row.querySelector(".inherit").textContent = base
+      ? "Leave blank to use the subject's usual teacher and room."
+      : "Pick a subject first.";
+
+    sel.addEventListener("change",()=>{ setEntry(ttDay,p,{k:sel.value}); ttOpen=ttDay+":"+p; save(); refreshAll(); });
+    tch.addEventListener("change",()=>{ setEntry(ttDay,p,{teacher:tch.value.trim()}); ttOpen=ttDay+":"+p; save(); refreshAll(); });
+    rm .addEventListener("change",()=>{ setEntry(ttDay,p,{room:rm.value.trim()});    ttOpen=ttDay+":"+p; save(); refreshAll(); });
+
+    /* copy this teacher+room to the subject's other periods */
+    if(base && (e.teacher||e.room)){
+      const cp=document.createElement("button");
+      cp.textContent="Use these for every "+base.name;
+      cp.addEventListener("click",()=>{
+        for(let d=1;d<=5;d++) for(let q=1;q<=PERIODS(d);q++){
+          const o=entryAt(d,q);
+          if(o && o.k===e.k) setEntry(d,q,{teacher:e.teacher||"", room:e.room||""});
+        }
+        ttOpen=ttDay+":"+p; save(); refreshAll(); toast("Applied to every "+base.name);
+      });
+      row.querySelector(".copyrow").appendChild(cp);
+    }
+
+    rows.appendChild(row);
   }
 
   const sl=$("subjList"); sl.innerHTML="";
@@ -1142,7 +1242,7 @@ $("everyAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addEvery(); })
 /* ==================================================================
    SYNC — AES-GCM encrypted blob on GitHub Pages
    ================================================================== */
-const APP_VERSION = "2.0";
+const APP_VERSION = "2.1";
 
 /* Common coloured-sticker-dot shades. Custom picker sits alongside for exact matching. */
 const STICKERS = ["#CE3A2E","#E8532B","#E88C1A","#E0B70E","#F2E14C",
