@@ -61,6 +61,7 @@ nav button.on{color:var(--ink);border-top-color:var(--accent)}
 .card::before{content:"";position:absolute;inset:0 auto 0 0;width:6px;background:var(--accent)}
 .kicker{font-size:11px;font-weight:800;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
 .subject{font-size:clamp(36px,9.5vw,58px);font-weight:800;letter-spacing:-.035em;line-height:.94;margin:14px 0 0}
+.teacher{margin-top:10px;font-size:clamp(15px,3.8vw,18px);font-weight:650;color:var(--ink-soft);letter-spacing:-.01em}
 .roomline{margin-top:16px;display:flex;align-items:baseline;gap:9px}
 .roomline .lbl{font-size:11px;font-weight:750;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint)}
 .roomline .val{font-size:clamp(21px,5.2vw,28px);font-weight:700;letter-spacing:-.02em}
@@ -148,6 +149,13 @@ nav button.on{color:var(--ink);border-top-color:var(--accent)}
 .checkrow{display:flex;align-items:center;gap:11px;font-size:14px;font-weight:650;padding:2px 0 14px}
 .checkrow input{width:21px;height:21px;flex:none;accent-color:var(--ink)}
 
+.sitelink{
+  display:flex;align-items:center;justify-content:center;gap:7px;
+  margin:0 18px 6px;padding:10px 12px;border-radius:11px;
+  background:var(--card);border:1px solid var(--rule);
+  font-size:13px;font-weight:650;color:var(--ink-soft);text-decoration:none;
+}
+.sitelink svg{width:13px;height:13px;flex:none;opacity:.6}
 .verline{font-family:var(--f-num);font-size:10px;color:var(--ink-faint);text-align:center;padding:8px 0 2px;letter-spacing:.02em}
 
 /* ---------- BAG ---------- */
@@ -300,6 +308,7 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
       <div class="card">
         <div class="kicker" id="kicker"></div>
         <h1 class="subject" id="subject"></h1>
+        <div class="teacher" id="teacher" hidden></div>
         <div class="roomline" id="roomWrap" hidden><span class="lbl">Room</span><span class="val" id="room"></span></div>
         <div class="left" id="leftWrap" hidden>
           <div class="num" id="leftNum"></div>
@@ -320,6 +329,10 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
         <span class="t" id="stime"></span>
       </div>
     </div>
+    <a class="sitelink" id="sitelink" href="#" target="_blank" rel="noopener" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>
+      <span id="sitelinkTxt">School website</span>
+    </a>
     <div class="verline" id="verline"></div>
   </section>
 
@@ -387,6 +400,13 @@ textarea{width:100%;min-height:90px;font-family:var(--f-num);font-size:11px;padd
         <div class="fieldrow" style="margin-top:8px"><label for="lbDrop">Morning car</label><input class="inp" id="lbDrop"></div>
         <div class="fieldrow" style="margin-top:8px"><label for="lbBusIn">Morning bus</label><input class="inp" id="lbBusIn"></div>
       </div>
+    </div>
+
+    <h2 class="sec">School website</h2>
+    <div class="panel">
+      <p class="hint">A link at the bottom of the Now screen. Leave the address blank to hide it.</p>
+      <div class="fieldrow"><label for="siteUrl">Address</label><input class="inp" id="siteUrl" type="url" autocapitalize="off" autocorrect="off" placeholder="https://..."></div>
+      <div class="fieldrow" style="margin-top:8px"><label for="siteLbl">Shows as</label><input class="inp" id="siteLbl"></div>
     </div>
 
     <h2 class="sec">Lunchtime reminder</h2>
@@ -498,6 +518,7 @@ const DEFAULTS = {
   },
   nottravel:["PE kit","Trainers"],
   midday:{ on:false, label:"Lunchtime", text:"Pop to the office before you eat", lead:5 },
+  site:{ url:"https://www.oraetlabora.co.uk", label:"School website" },
   everyday:["Planner","Pencil case","Water bottle","Charged phone"],
   subjects:{
     english:  {name:"English",         code:"EN", colour:"#CE3A2E", room:"B14", mats:["English jotter","English textbook","Reading book"]},
@@ -596,7 +617,7 @@ function resolve(key){
   const s = D.subjects[k];
   if(!s) return null;
   return {key:k, slot:key, name:s.name, code:s.code, colour:s.colour, room:s.room, mats:s.mats||[],
-          rotating: key==="social"};
+          teacher:s.teacher||"", rotating: key==="social"};
 }
 function subjectAt(day, period){ return resolve((D.timetable[day]||[])[period-1]); }
 
@@ -622,7 +643,7 @@ function paintNow(day, now){
   $("clock").textContent = nice(now);
 
   const blocks = blocksFor(day);
-  let accent="#46536B", kicker="", subject="", room=null, meta="", left=null;
+  let accent="#46536B", kicker="", subject="", room=null, meta="", left=null, teacher="";
 
   if(!blocks.length){
     const nd=nextSchoolDay(day), first=blocksFor(nd)[0];
@@ -638,7 +659,7 @@ function paintNow(day, now){
 
     if(now<open){
       const f=blocks[0];
-      if(f.subject){ accent=f.subject.colour; subject=f.subject.name; room=f.subject.room; }
+      if(f.subject){ accent=f.subject.colour; subject=f.subject.name; room=f.subject.room; teacher=f.subject.teacher; }
       kicker="First today";
       meta=`Starts at <b>${nice(f.start)}</b>.`;
       left={done:0,total:1,text:`${open-now} min until the first bell`};
@@ -652,7 +673,7 @@ function paintNow(day, now){
       }
 
     } else if(cur.kind==="P" && now-cur.start<=HAND_AFTER){
-      accent=cur.subject.colour; kicker="Go to"; subject=cur.subject.name; room=cur.subject.room;
+      accent=cur.subject.colour; kicker="Go to"; subject=cur.subject.name; room=cur.subject.room; teacher=cur.subject.teacher;
       meta=`Started at <b>${nice(cur.start)}</b>. You're in the right place.`;
       left={done:now-cur.start,total:cur.end-cur.start,text:`${cur.end-now} min of this class left`};
 
@@ -661,7 +682,7 @@ function paintNow(day, now){
       accent = t ? t.colour : "#46536B";
       kicker = "Next — bell in "+(nxt.start-now)+" min";
       subject = t ? t.name : nxt.breakName;
-      if(t){ room=t.room; meta=`Starts at <b>${nice(nxt.start)}</b>.`; }
+      if(t){ room=t.room; teacher=t.teacher; meta=`Starts at <b>${nice(nxt.start)}</b>.`; }
       else {
         const after = blocks[blocks.indexOf(nxt)+1];
         meta = `${nxt.end-nxt.start} minutes, then <b>${after&&after.subject?after.subject.name:"home"}</b>.`;
@@ -673,7 +694,7 @@ function paintNow(day, now){
       left={done:now-cur.start,total:cur.end-cur.start,text:`${cur.end-now} min left`};
 
     } else {
-      accent=cur.subject.colour; kicker="Now"; subject=cur.subject.name; room=cur.subject.room;
+      accent=cur.subject.colour; kicker="Now"; subject=cur.subject.name; room=cur.subject.room; teacher=cur.subject.teacher;
       const after = nxt ? (nxt.kind==="P"?nxt.subject.name:nxt.breakName) : "home time";
       meta=`Then <b>${after}</b> at ${nice(cur.end)}.`;
       left={done:now-cur.start,total:cur.end-cur.start,text:`${cur.end-now} min left`};
@@ -683,6 +704,7 @@ function paintNow(day, now){
   document.documentElement.style.setProperty("--accent",accent);
   $("kicker").textContent=kicker;
   $("subject").textContent=subject;
+  $("teacher").hidden=!teacher; if(teacher) $("teacher").textContent=teacher;
   $("roomWrap").hidden=!room; if(room) $("room").textContent=room;
   $("meta").innerHTML=meta;
   $("leftWrap").hidden=!left;
@@ -896,7 +918,7 @@ function paintWeek(){
       const blk=blocksFor(d).find(x=>x.period===p);
       b.addEventListener("click",()=>{
         $("weekDetail").innerHTML = s
-          ? `<b>${SHORT[d]} · ${nice(blk.start)}</b> — ${s.name}, room ${s.room}${s.rotating?" (rotates during the year)":""}. Bring: ${s.mats.join(", ")||"nothing extra"}.`
+          ? `<b>${SHORT[d]} · ${nice(blk.start)}</b> — ${s.name}${s.teacher?", "+s.teacher:""}, room ${s.room}${s.rotating?" (rotates during the year)":""}. Bring: ${s.mats.join(", ")||"nothing extra"}.`
           : `<b>${SHORT[d]} period ${p}</b> — not set yet.`;
       });
       td.appendChild(b);
@@ -972,6 +994,7 @@ function paintSetup(){
       <div class="subjbody">
         <div class="fieldrow" style="margin-top:10px"><label>Called</label><input class="inp nmI" value="${s.name.replace(/"/g,"&quot;")}"></div>
         <div class="fieldrow" style="margin-top:8px"><label>Room</label><input class="inp rmI" value="${s.room.replace(/"/g,"&quot;")}"></div>
+        <div class="fieldrow" style="margin-top:8px"><label>Teacher</label><input class="inp tcI" value="${(s.teacher||'').replace(/"/g,"&quot;")}" placeholder="e.g. Mrs Baird"></div>
         <div class="swatchlbl">Sticker colour</div>
         <div class="swatches"></div>
         <div class="mats"></div>
@@ -980,6 +1003,8 @@ function paintSetup(){
     const nmI=det.querySelector(".nmI"), rmI=det.querySelector(".rmI");
     nmI.addEventListener("change",()=>{ s.name=nmI.value.trim()||s.name; save(); refreshAll(); });
     rmI.addEventListener("change",()=>{ s.room=rmI.value.trim(); save(); refreshAll(); });
+    const tcI=det.querySelector(".tcI");
+    tcI.addEventListener("change",()=>{ s.teacher=tcI.value.trim(); save(); refreshAll(); });
 
     const sw=det.querySelector(".swatches");
     const setColour=c=>{
@@ -1042,6 +1067,11 @@ function paintSetup(){
     $(id).value = planLabel(k);
   });
 
+  /* school website */
+  if(!D.site) D.site=JSON.parse(JSON.stringify(DEFAULTS.site));
+  $("siteUrl").value=D.site.url||"";
+  $("siteLbl").value=D.site.label||"";
+
   /* midday reminder */
   if(!D.midday) D.midday=JSON.parse(JSON.stringify(DEFAULTS.midday));
   $("mdOn").checked = !!D.midday.on;
@@ -1073,6 +1103,15 @@ $("anchor").addEventListener("change",e=>{
     save(); refreshAll();
   });
 });
+[["siteUrl","url"],["siteLbl","label"]].forEach(([id,k])=>{
+  $(id).addEventListener("change",()=>{
+    if(!D.site) D.site=JSON.parse(JSON.stringify(DEFAULTS.site));
+    D.site[k]=$(id).value.trim();
+    if(k==="label" && !D.site.label) D.site.label=DEFAULTS.site.label;
+    save(); refreshAll();
+  });
+});
+
 [["mdLabel","label"],["mdText","text"]].forEach(([id,k])=>{
   $(id).addEventListener("change",()=>{
     if(!D.midday) D.midday=JSON.parse(JSON.stringify(DEFAULTS.midday));
@@ -1103,7 +1142,7 @@ $("everyAdd").addEventListener("keydown",e=>{ if(e.key==="Enter") addEvery(); })
 /* ==================================================================
    SYNC — AES-GCM encrypted blob on GitHub Pages
    ================================================================== */
-const APP_VERSION = "1.8";
+const APP_VERSION = "2.0";
 
 /* Common coloured-sticker-dot shades. Custom picker sits alongside for exact matching. */
 const STICKERS = ["#CE3A2E","#E8532B","#E88C1A","#E0B70E","#F2E14C",
@@ -1272,6 +1311,17 @@ function currentDate(){
   if(!manual) return new Date();
   const d=new Date(); const shift=manual.day-dow(d);
   return addDays(d,shift);
+}
+
+function paintSite(){
+  const a=$("sitelink"); if(!a) return;
+  const cfg=D.site||{};
+  let url=(cfg.url||"").trim();
+  if(url && !/^https?:\/\//i.test(url)) url="https://"+url;
+  if(!url){ a.hidden=true; return; }
+  a.hidden=false;
+  a.href=url;
+  $("sitelinkTxt").textContent=cfg.label||"School website";
 }
 
 function paintVersion(){
@@ -1446,7 +1496,7 @@ document.querySelectorAll("nav button").forEach(b=>{
   });
 });
 
-function refreshAll(){ tick(); paintBag(); paintWeek(); paintSetup(); paintSync(); paintVersion(); paintDemo(); }
+function refreshAll(){ tick(); paintBag(); paintWeek(); paintSetup(); paintSync(); paintVersion(); paintDemo(); paintSite(); }
 applyRole();
 refreshAll();
 pull(true);
